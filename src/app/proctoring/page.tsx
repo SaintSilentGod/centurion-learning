@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ProctorConsent } from "@/proctoring/components/ProctorConsent";
+import { SingleTabBlocker } from "@/proctoring/components/SingleTabBlocker";
 import { useProctoringEngine } from "@/proctoring/hooks/useProctoringEngine";
 import { CALIBRATION_STEP_LABELS, RISK_CATEGORY_LABELS } from "@/proctoring/constants";
 
@@ -27,11 +28,16 @@ export default function ProctoringRuntimePage() {
 
   return (
     <main className="mx-auto flex min-h-full max-w-3xl flex-col gap-6 px-6 py-10">
+      <SingleTabBlocker
+        blocked={engine.tabGuardBlocked}
+        onRetry={() => void engine.retryTabGuard()}
+      />
+
       <div>
         <h1 className="text-2xl font-semibold">Прокторинг экзамена</h1>
         <p className="mt-1 text-slate-600">
-          Runtime-модуль для реального экзамена. Сначала калибровка, затем
-          мониторинг.
+          Runtime-модуль для реального экзамена. Закройте все другие вкладки с
+          экзаменом, пройдите калибровку, затем мониторинг.
         </p>
       </div>
 
@@ -45,6 +51,11 @@ export default function ProctoringRuntimePage() {
           Событий: {liveState.events.length} · Время:{" "}
           {Math.round(liveState.examTimeMs / 1000)} сек
         </p>
+        {liveState.tabGuardBlocked ? (
+          <p className="mt-2 font-medium text-amber-800">
+            Обнаружена вторая вкладка — закройте её, чтобы продолжить.
+          </p>
+        ) : null}
         {liveState.calibrating && liveState.calibrationStep ? (
           <p className="mt-2 text-blue-700">
             {CALIBRATION_STEP_LABELS[liveState.calibrationStep]}
@@ -64,9 +75,16 @@ export default function ProctoringRuntimePage() {
           type="button"
           className="min-h-12 rounded-lg bg-green-700 px-5 text-white hover:bg-green-800"
           onClick={async () => {
-            await engine.requestFullscreen();
-            await engine.requestScreenShare();
-            await engine.startMonitoring();
+            try {
+              await engine.requestFullscreen();
+              await engine.requestScreenShare();
+              const started = await engine.startMonitoring();
+              if (!started) return;
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : "Не удалось начать экзамен";
+              window.alert(message);
+            }
           }}
         >
           Начать экзамен

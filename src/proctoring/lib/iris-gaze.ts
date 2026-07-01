@@ -79,7 +79,7 @@ export function gazeDirectionFromIris(
   const dx = iris.averageIrisX - baseX;
   const dy = iris.averageIrisY - baseY;
 
-  if (Math.abs(dx) < 0.08 && Math.abs(dy) < 0.08) return "center";
+  if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) return "center";
   if (Math.abs(dx) > Math.abs(dy)) {
     return dx > 0 ? "right" : "left";
   }

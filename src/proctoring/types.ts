@@ -36,6 +36,11 @@ export type ProctorEventType =
   | "PASTE_ATTEMPT"
   | "RIGHT_CLICK"
   | "SCREEN_SHARE_STOPPED"
+  | "SCREEN_SHARE_INVALID"
+  | "DRAG_DROP_ATTEMPT"
+  | "CAMERA_DISCONNECTED"
+  | "DUPLICATE_EXAM_TAB"
+  | "NEW_TAB_SHORTCUT"
   | "SPEECH_DETECTED"
   | "LONG_SPEECH_DETECTED"
   | "BACKGROUND_NOISE_HIGH"
@@ -106,6 +111,12 @@ export type BrowserMonitoringState = {
   isTabVisible: boolean;
   isWindowFocused: boolean;
   screenShareActive: boolean;
+  /** True when the user shared the full monitor, not just a tab/window. */
+  screenShareFullMonitor: boolean;
+  displaySurface: "monitor" | "window" | "browser" | "unknown" | null;
+  /** True when another tab holds the exam lock or this tab lost it. */
+  examTabBlocked: boolean;
+  singleTabEnforced: boolean;
 };
 
 export type AudioMonitoringState = {
@@ -114,6 +125,8 @@ export type AudioMonitoringState = {
   speechDetected: boolean;
   speechDurationMs: number;
   backgroundNoiseHigh: boolean;
+  /** 0–1 VAD confidence for human speech */
+  voiceConfidence: number;
 };
 
 export type ObjectDetectionState = {
@@ -204,6 +217,12 @@ export type ProctorLiveState = {
   calibrating: boolean;
   calibrationStep: CalibrationStep | null;
   examTimeMs: number;
+  tabGuardBlocked: boolean;
 };
 
-export type CameraStreamStatus = "idle" | "requesting" | "active" | "error";
+export type CameraStreamStatus =
+  | "idle"
+  | "requesting"
+  | "active"
+  | "disconnected"
+  | "error";

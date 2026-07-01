@@ -119,6 +119,46 @@ export const EVENT_RISK_CONFIG: Record<ProctorEventType, EventRiskConfig> = {
     decayMode: "none",
     maxContribution: 60,
   },
+  SCREEN_SHARE_INVALID: {
+    weight: 35,
+    severity: "high",
+    cooldownMs: 5000,
+    eventKind: "instant",
+    decayMode: "none",
+    maxContribution: 45,
+  },
+  DRAG_DROP_ATTEMPT: {
+    weight: 12,
+    severity: "medium",
+    cooldownMs: 3000,
+    eventKind: "instant",
+    decayMode: "normal",
+    maxContribution: 20,
+  },
+  CAMERA_DISCONNECTED: {
+    weight: 40,
+    severity: "high",
+    cooldownMs: 0,
+    eventKind: "instant",
+    decayMode: "none",
+    maxContribution: 50,
+  },
+  DUPLICATE_EXAM_TAB: {
+    weight: 30,
+    severity: "high",
+    cooldownMs: 5000,
+    eventKind: "instant",
+    decayMode: "slow",
+    maxContribution: 40,
+  },
+  NEW_TAB_SHORTCUT: {
+    weight: 18,
+    severity: "medium",
+    cooldownMs: 2000,
+    eventKind: "instant",
+    decayMode: "normal",
+    maxContribution: 25,
+  },
   SPEECH_DETECTED: {
     weight: 10,
     severity: "low",
@@ -252,12 +292,20 @@ export const CALIBRATION_STEP_LABELS: Record<string, string> = {
 
 export const CRITICAL_EVENT_TYPES: ProctorEventType[] = [
   "SCREEN_SHARE_STOPPED",
+  "SCREEN_SHARE_INVALID",
+  "CAMERA_DISCONNECTED",
   "PHONE_DETECTED",
   "MULTIPLE_FACES",
   "COPY_ATTEMPT",
   "PASTE_ATTEMPT",
   "FULLSCREEN_EXIT",
 ];
+
+/** Wider dead-zones reduce false gaze/head alerts before calibration. */
+export const HEAD_POSE_THRESHOLDS = {
+  degrees: { yaw: 18, pitchDown: 14, pitchUp: 12 },
+  normalized: { yaw: 0.05, pitchDown: 0.1, pitchUp: 0.055 },
+} as const;
 
 export function getDecayHalfLifeMs(
   mode: "live" | "final",

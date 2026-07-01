@@ -43,6 +43,7 @@ import { useBrowserMonitoring } from "./useBrowserMonitoring";
 import { useCameraStream } from "./useCameraStream";
 import { useFaceAnalysis } from "./useFaceAnalysis";
 import { useObjectDetection } from "./useObjectDetection";
+import { useSingleTabGuard } from "./useSingleTabGuard";
 
 function createInitialLiveState(): ProctorLiveState {
   return {
@@ -52,6 +53,10 @@ function createInitialLiveState(): ProctorLiveState {
       isTabVisible: true,
       isWindowFocused: true,
       screenShareActive: false,
+      screenShareFullMonitor: false,
+      displaySurface: null,
+      examTabBlocked: false,
+      singleTabEnforced: false,
     },
     audio: {
       micActive: false,
@@ -59,6 +64,7 @@ function createInitialLiveState(): ProctorLiveState {
       speechDetected: false,
       speechDurationMs: 0,
       backgroundNoiseHigh: false,
+      voiceConfidence: 0,
     },
     objects: {
       phoneDetected: false,
@@ -85,6 +91,7 @@ function createInitialLiveState(): ProctorLiveState {
     calibrating: false,
     calibrationStep: null,
     examTimeMs: 0,
+    tabGuardBlocked: false,
   };
 }
 
@@ -153,10 +160,18 @@ export function useProctoringEngine() {
     }
   }, []);
 
-  const { videoRef, start: startCamera, stop: stopCamera, status, error } =
-    useCameraStream();
+  const onTabBlockedRef = useRef<() => void>(() => {});
 
+  const tabGuard = useSingleTabGuard({
+    onBlocked: () => onTabBlockedRef.current(),
+  });
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const onCameraDisconnectRef = useRef<() => void>(() => {});
+
+  const { videoRef, start: startCamera, stop: stopCamera, status, error } =
+    useCameraStream({
+      onDisconnect: () => onCameraDisconnectRef.current(),
+    });
 
   const registerEvent = useCallback((event: { id: string } | null) => {
     if (event) {
@@ -231,6 +246,7 @@ export function useProctoringEngine() {
     syncSustainedEvent("SPEECH_DETECTED", "audio", audio.speechDetected, {
       volume: audio.volume,
       speechDurationMs: audio.speechDurationMs,
+      voiceConfidence: audio.voiceConfidence,
     });
 
     const longSpeechActive =
@@ -279,10 +295,13 @@ export function useProctoringEngine() {
     enabled: faceAnalysisEnabled,
     videoRef,
     canvasRef,
+    calibrationRef: calibrationProfileRef,
     onFrame: onFaceFrame,
   });
 
-  const browser = useBrowserMonitoring(monitoringEnabled, handleProctorEvent);
+  const browser = useBrowserMonitoring(monitoringEnabled, handleProctorEvent, {
+    blockNewTabShortcuts: monitoringEnabled,
+  });
   const audio = useAudioMonitoring(monitoringEnabled);
   const objects = useObjectDetection(
     monitoringEnabled && objectDetectionEnabled,
@@ -292,6 +311,10 @@ export function useProctoringEngine() {
   useEffect(() => {
     browserStateRef.current = browser.state;
   }, [browser.state]);
+
+  useEffect(() => {
+    browser.setExamTabBlocked(tabGuard.isBlocked);
+  }, [tabGuard.isBlocked, browser]);
 
   useEffect(() => {
     audioStateRef.current = audio.state;
@@ -362,8 +385,26 @@ export function useProctoringEngine() {
       examTimeMs: examStartedAtRef.current
         ? now - examStartedAtRef.current
         : 0,
+      tabGuardBlocked: tabGuard.isBlocked,
     });
-  }, [monitoringEnabled, syncEpisodeEvents]);
+  }, [monitoringEnabled, syncEpisodeEvents, tabGuard.isBlocked]);
+
+  useEffect(() => {
+    onTabBlockedRef.current = () => {
+      logInstantEvent("DUPLICATE_EXAM_TAB", "browser");
+      browser.setExamTabBlocked(true);
+      syncLiveState();
+    };
+  }, [browser, logInstantEvent, syncLiveState]);
+
+  useEffect(() => {
+    onCameraDisconnectRef.current = () => {
+      logInstantEvent("CAMERA_DISCONNECTED", "system", {
+        cameraStatus: "disconnected",
+      });
+      syncLiveState();
+    };
+  }, [logInstantEvent, syncLiveState]);
 
   useEffect(() => {
     const uiTimer = setInterval(syncLiveState, UI_UPDATE_MS);
@@ -408,7 +449,14 @@ export function useProctoringEngine() {
     return () => clearInterval(timer);
   }, [liveState.calibrating, logInstantEvent, syncLiveState]);
 
-  const startMonitoring = useCallback(async () => {
+  const startMonitoring = useCallback(async (): Promise<boolean> => {
+    const tabOk = await tabGuard.acquire();
+    if (!tabOk) {
+      browser.setExamTabBlocked(true);
+      syncLiveState();
+      return false;
+    }
+
     calibratingRef.current = false;
     calibrationStepRef.current = null;
     await startCamera();
@@ -419,7 +467,8 @@ export function useProctoringEngine() {
     attentionTrackerRef.current = createAttentionTrackerState();
     logInstantEvent("MONITORING_STARTED", "system");
     syncLiveState();
-  }, [logInstantEvent, startCamera, syncLiveState]);
+    return true;
+  }, [browser, logInstantEvent, startCamera, syncLiveState, tabGuard]);
 
   const stopMonitoring = useCallback(() => {
     setMonitoringEnabled(false);
@@ -430,9 +479,10 @@ export function useProctoringEngine() {
     eventLoggerRef.current.closeOpenEpisodes();
     logInstantEvent("MONITORING_STOPPED", "system");
     eventLoggerRef.current.stopExam();
+    tabGuard.release();
     stopCamera();
     syncLiveState();
-  }, [logInstantEvent, stopCamera, syncLiveState]);
+  }, [logInstantEvent, stopCamera, syncLiveState, tabGuard]);
 
   const startCalibration = useCallback(async () => {
     setMonitoringEnabled(false);
@@ -506,6 +556,8 @@ export function useProctoringEngine() {
     resetEvents,
     exportDebugJson,
     downloadDebugJson,
+    tabGuardBlocked: tabGuard.isBlocked,
+    retryTabGuard: tabGuard.retry,
     requestFullscreen: browser.requestFullscreen,
     requestScreenShare: browser.requestScreenShare,
     simulateTabHidden: browser.simulateTabHidden,

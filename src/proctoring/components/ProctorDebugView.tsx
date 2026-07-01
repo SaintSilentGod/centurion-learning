@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { CALIBRATION_STEP_LABELS, RISK_CATEGORY_LABELS } from "../constants";
 import { useProctoringEngine } from "../hooks/useProctoringEngine";
+import { SingleTabBlocker } from "./SingleTabBlocker";
 import type { ProctorEvent } from "../types";
 
 export function ProctorDebugView() {
@@ -34,6 +35,10 @@ export function ProctorDebugView() {
 
   return (
     <div className="flex flex-col gap-8">
+      <SingleTabBlocker
+        blocked={engine.tabGuardBlocked}
+        onRetry={() => void engine.retryTabGuard()}
+      />
       <div className="flex flex-col gap-6 xl:flex-row">
         <div className="flex-1">
           <div className="relative overflow-hidden rounded-2xl bg-slate-900">
@@ -135,7 +140,13 @@ export function ProctorDebugView() {
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void engine.requestScreenShare()}
+            onClick={() =>
+              void engine.requestScreenShare().catch((err: unknown) => {
+                const message =
+                  err instanceof Error ? err.message : "Screen share failed";
+                window.alert(message);
+              })
+            }
           >
             Screen share
           </Button>

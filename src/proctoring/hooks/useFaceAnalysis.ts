@@ -14,8 +14,9 @@ import {
   eyesOpenFromBlendshapes,
   resolveHeadPose,
 } from "../lib/head-pose";
-import { computeIrisMetrics } from "../lib/iris-gaze";
-import type { FaceAnalysisFrame } from "../types";
+import { computeIrisMetrics, gazeDirectionFromIris } from "../lib/iris-gaze";
+import type { CalibrationProfile, FaceAnalysisFrame } from "../types";
+import { compareToCalibration } from "../lib/calibration";
 
 export const EMPTY_FACE_FRAME: FaceAnalysisFrame = {
   faceDetected: false,
@@ -45,6 +46,7 @@ type UseFaceAnalysisOptions = {
   enabled: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef?: React.RefObject<HTMLCanvasElement | null>;
+  calibrationRef?: React.RefObject<CalibrationProfile | null>;
   onFrame?: (frame: FaceAnalysisFrame) => void;
 };
 
@@ -52,6 +54,7 @@ export function useFaceAnalysis({
   enabled,
   videoRef,
   canvasRef,
+  calibrationRef,
   onFrame,
 }: UseFaceAnalysisOptions) {
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -177,11 +180,25 @@ export function useFaceAnalysis({
           const { eyesOpen, blinkDetected } =
             eyesOpenFromBlendshapes(blendshapeCategories);
 
-          const lookingDirection = estimateLookingDirection(
-            pose.yaw,
-            pose.pitch,
-            useDegrees,
+          const irisDirection = gazeDirectionFromIris(
+            iris,
+            calibrationRef?.current?.center,
           );
+          const lookingDirection = calibrationRef?.current
+            ? compareToCalibration(
+                {
+                  ...frame,
+                  headYaw: pose.yaw,
+                  headPitch: pose.pitch,
+                  headRoll: pose.roll,
+                  iris,
+                  faceDetected: true,
+                } as FaceAnalysisFrame,
+                calibrationRef.current,
+              ).lookingDirection
+            : irisDirection !== "center"
+              ? irisDirection
+              : estimateLookingDirection(pose.yaw, pose.pitch, useDegrees);
 
           let attentionState: FaceAnalysisFrame["attentionState"] = "attentive";
           if (!faceDetected) attentionState = "missing";
@@ -217,7 +234,7 @@ export function useFaceAnalysis({
       landmarkerRef.current?.close();
       landmarkerRef.current = null;
     };
-  }, [enabled, videoRef, canvasRef]);
+  }, [enabled, videoRef, canvasRef, calibrationRef]);
 
   return { frameRef };
 }

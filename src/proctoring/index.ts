@@ -16,10 +16,22 @@ export {
   recomputeRiskFromEvents,
   durationMultiplier,
 } from "./lib/risk-scoring";
-export { computeAttentionState, getAttentionSustainedSignals } from "./lib/attention-engine";
+export { SpeechVadSmoother, analyzeTimeDomain, speechBandRatio } from "./lib/speech-vad";
+export {
+  computeAttentionState,
+  getAttentionSustainedSignals,
+} from "./lib/attention-engine";
 export {
   saveCalibrationProfile,
   loadCalibrationProfile,
 } from "./lib/calibration";
+export { useSingleTabGuard, probeExamTabAvailable } from "./hooks/useSingleTabGuard";
 export { ProctorDebugView } from "./components/ProctorDebugView";
+export { SingleTabBlocker } from "./components/SingleTabBlocker";
+export {
+  holdExamTabLock,
+  waitForExamTabLock,
+  isNewTabShortcut,
+  EXAM_TAB_LOCK_NAME,
+} from "./lib/single-tab-guard";
 export { ProctorConsent } from "./components/ProctorConsent";

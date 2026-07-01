@@ -1,3 +1,4 @@
+import { HEAD_POSE_THRESHOLDS } from "../constants";
 import type { LookingDirection } from "../types";
 
 /** MediaPipe Face Landmarker indices */
@@ -89,17 +90,19 @@ export function estimateLookingDirection(
   useDegrees: boolean,
 ): LookingDirection {
   if (useDegrees) {
-    if (yaw > 12) return "right";
-    if (yaw < -12) return "left";
-    if (pitch > 10) return "down";
-    if (pitch < -8) return "up";
+    const t = HEAD_POSE_THRESHOLDS.degrees;
+    if (yaw > t.yaw) return "right";
+    if (yaw < -t.yaw) return "left";
+    if (pitch > t.pitchDown) return "down";
+    if (pitch < -t.pitchUp) return "up";
     return "center";
   }
 
-  if (yaw > 0.035) return "right";
-  if (yaw < -0.035) return "left";
-  if (pitch > 0.085) return "down";
-  if (pitch < -0.04) return "up";
+  const t = HEAD_POSE_THRESHOLDS.normalized;
+  if (yaw > t.yaw) return "right";
+  if (yaw < -t.yaw) return "left";
+  if (pitch > t.pitchDown) return "down";
+  if (pitch < -t.pitchUp) return "up";
   return "center";
 }
 
