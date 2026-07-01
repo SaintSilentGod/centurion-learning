@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  CLIENT
+}
+
+enum ClientStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+/// Учётная запись (админ или клиент). Логин общий для входа.
+model User {
+  id                String   @id @default(cuid())
+  username          String   @unique
+  passwordHash      String
+  /// Зашифрованный пароль для просмотра админом (только клиенты)
+  passwordEncrypted String?
+  role              UserRole
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  clientProfile  ClientProfile?
+  authSessions   AuthSession[]
+  createdClients ClientProfile[] @relation("CreatedByAdmin")
+}
+
+/// Профиль клиента (сотрудника). Все админы видят общий пул клиентов.
+model ClientProfile {
+  id          String       @id @default(cuid())
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName   String
+  lastName    String
+  patronymic  String
+  dateOfBirth DateTime     @db.Date
+  status      ClientStatus @default(ACTIVE)
+  createdById String?
+  createdBy   User?        @relation("CreatedByAdmin", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  archivedAt  DateTime?
+
+  topicAssignments ClientTopicAssignment[]
+  topicSessions    TopicSession[]
+  testAttempts     TestAttempt[]
+
+  @@index([status])
+}
+
+/// Тема обучения (Тема 1, 2, 3…). Каталог общий для всех админов.
+model Topic {
+  id          String   @id @default(cuid())
+  order       Int      @unique
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  materials    Material[]
+  tests        Test[]
+  assignments  ClientTopicAssignment[]
+  sessions     TopicSession[]
+}
+
+/// Текстовый материал темы. Контент в БД (небольшие файлы-тексты).
+model Material {
+  id        String   @id @default(cuid())
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title     String
+  content   String   @db.Text
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([topicId, order])
+}
+
+/// Какие темы назначены клиенту (настраивает админ при создании/редактировании).
+model ClientTopicAssignment {
+  id         String        @id @default(cuid())
+  clientId   String
+  client     ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  topicId    String
+  topic      Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  assignedAt DateTime      @default(now())
+
+  @@unique([clientId, topicId])
+}
+
+/// Сессия изучения темы: открытие → закрытие. Сумма durationSec = время по теме.
+model TopicSession {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  topicId     String
+  topic       Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  startedAt   DateTime      @default(now())
+  endedAt     DateTime?
+  durationSec Int?
+
+  @@index([clientId, topicId])
+  @@index([clientId, topicId, endedAt])
+}
+
+/// Mock-тест по теме (пока заглушка, структура на будущее).
+model Test {
+  id        String   @id @default(cuid())
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime @default(now())
+
+  questions TestQuestion[]
+  attempts  TestAttempt[]
+
+  @@unique([topicId])
+}
+
+model TestQuestion {
+  id       String @id @default(cuid())
+  testId   String
+  test     Test   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  order    Int
+  text     String
+  options  TestOption[]
+  answers  TestAttemptAnswer[]
+
+  @@unique([testId, order])
+}
+
+model TestOption {
+  id         String       @id @default(cuid())
+  questionId String
+  question   TestQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  order      Int
+  text       String
+  isCorrect  Boolean      @default(false)
+
+  @@unique([questionId, order])
+}
+
+model TestAttempt {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  testId      String
+  test        Test          @relation(fields: [testId], references: [id], onDelete: Cascade)
+  score       Int?
+  passed      Boolean?
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  answers TestAttemptAnswer[]
+
+  @@index([clientId, testId])
+}
+
+model TestAttemptAnswer {
+  id         String       @id @default(cuid())
+  attemptId  String
+  attempt    TestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   TestQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  optionId   String?
+
+  @@unique([attemptId, questionId])
+}
+
+/// Серверная сессия авторизации (для Serverless Containers — не in-memory).
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}

@@ -1,0 +1,7 @@
+# Пустые директории под следующие этапы
+# components/ui — кнопки, поля, карточки
+# components/layout — шапка, меню
+# components/features/admin — список клиентов, карточка, создание
+# components/features/client — темы, просмотр материала, тест
+# lib/auth — сессии (следующий этап)
+# lib/storage — Object Storage (при деплое)

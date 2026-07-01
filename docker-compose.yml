@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: centurion-learning-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: centurion
+      POSTGRES_PASSWORD: centurion
+      POSTGRES_DB: centurion_learning
+    volumes:
+      - centurion_pg_data:/var/lib/postgresql/data
+
+volumes:
+  centurion_pg_data:

@@ -1,0 +1,5 @@
+# Server Actions и API-обработчики по доменам:
+# admin/clients.ts — CRUD клиентов, архивация
+# admin/assignments.ts — назначение тем
+# client/topics.ts — открытие/закрытие темы, учёт времени
+# client/tests.ts — mock-тесты
