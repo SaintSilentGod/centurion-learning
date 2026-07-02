@@ -39,6 +39,7 @@ export function updateAttentionTracker(
 ): AttentionTrackerState {
   const comparison = compareToCalibration(frame, calibration);
   const looking = calibration ? comparison.lookingDirection : frame.lookingDirection;
+  const isGazeDissociated = comparison.isGazeDissociated ?? false;
 
   const next = { ...state };
 
@@ -56,9 +57,9 @@ export function updateAttentionTracker(
 
   const headAway =
     looking === "left" || looking === "right" || looking === "up";
-  if (headAway) {
+  if (headAway && !isGazeDissociated) {
     next.headTurnedMs += deltaMs;
-  } else {
+  } else if (!headAway) {
     next.headTurnedMs = 0;
   }
 
@@ -66,15 +67,15 @@ export function updateAttentionTracker(
     looking === "left" || looking === "right" || looking === "up";
   const headCenter = looking === "center" || frame.lookingDirection === "center";
 
-  if (gazeAway && headCenter && frame.faceDetected) {
+  if (gazeAway && headCenter && frame.faceDetected && !isGazeDissociated) {
     next.gazeAwayMs += deltaMs;
   } else if (!gazeAway) {
     next.gazeAwayMs = 0;
   }
 
-  if (looking === "down" && frame.faceDetected) {
+  if (looking === "down" && frame.faceDetected && !isGazeDissociated) {
     next.lookingDownMs += deltaMs;
-  } else {
+  } else if (looking !== "down") {
     next.lookingDownMs = 0;
   }
 
@@ -141,7 +142,12 @@ export function computeAttentionState(
     attentionState = "distracted";
   }
 
-  if (looking !== "center" && frame.faceDetected && !frame.multipleFaces) {
+  if (
+    looking !== "center" &&
+    frame.faceDetected &&
+    !frame.multipleFaces &&
+    !comparison.isGazeDissociated
+  ) {
     attentionScore -= 10;
   }
 

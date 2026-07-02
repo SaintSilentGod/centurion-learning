@@ -8,10 +8,10 @@ export default async function LearnPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Card title="Назначенные темы">
+      <Card title="Назначенные классификации">
         {topics.length === 0 ? (
           <p className="text-slate-600">
-            Вам пока не назначены темы. Обратитесь к администратору.
+            Вам пока не назначены классификации. Обратитесь к администратору.
           </p>
         ) : (
           <ul className="divide-y divide-slate-200">
@@ -30,9 +30,13 @@ export default async function LearnPage() {
                     <p className="text-slate-600">
                       Затрачено времени: {formatDurationRu(totalSec)}
                     </p>
+                    <p className="text-slate-600">
+                      Модулей всего: {topic.moduleCount ?? 0} · Следующий:{" "}
+                      {topic.nextModuleOrder ?? 1}
+                    </p>
                   </div>
                   <Link
-                    href={`/learn/topic/${topic.id}`}
+                    href={`/learn/classification/${topic.id}`}
                     className="inline-flex min-h-12 items-center rounded-lg bg-blue-700 px-5 text-lg font-medium text-white hover:bg-blue-800"
                   >
                     Открыть

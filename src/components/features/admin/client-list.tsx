@@ -110,7 +110,7 @@ function ClientListItem({
         <p className="text-lg font-medium">{fio}</p>
         <p className="text-slate-600">Логин: {client.user.username}</p>
         <p className="text-slate-600">
-          Тем назначено: {client.topicAssignments.length}
+          Классификаций назначено: {client.topicAssignments.length}
         </p>
       </div>
 

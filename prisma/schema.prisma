@@ -52,11 +52,13 @@ model ClientProfile {
   topicAssignments ClientTopicAssignment[]
   topicSessions    TopicSession[]
   testAttempts     TestAttempt[]
+  moduleSessions   ModuleSession[]
+  moduleTestAttempts ModuleTestAttempt[]
 
   @@index([status])
 }
 
-/// Тема обучения (Тема 1, 2, 3…). Каталог общий для всех админов.
+/// Классификация обучения (Категория 1–8). Каталог общий для всех админов.
 model Topic {
   id          String   @id @default(cuid())
   order       Int      @unique
@@ -67,8 +69,120 @@ model Topic {
 
   materials    Material[]
   tests        Test[]
+  modules      TopicModule[]
   assignments  ClientTopicAssignment[]
   sessions     TopicSession[]
+}
+
+/// Модуль внутри классификации. Проходится последовательно (order 1..N).
+model TopicModule {
+  id          String   @id @default(cuid())
+  topicId     String
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  order       Int
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  materials ModuleMaterial[]
+  test      ModuleTest?
+  sessions  ModuleSession[]
+
+  @@unique([topicId, order])
+  @@index([topicId, order])
+}
+
+model ModuleMaterial {
+  id        String     @id @default(cuid())
+  moduleId  String
+  module    TopicModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title     String
+  content   String     @db.Text
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([moduleId, order])
+}
+
+/// Тест к модулю (начиная со 2 модуля; для 1 модуля тест отсутствует).
+model ModuleTest {
+  id        String     @id @default(cuid())
+  moduleId  String     @unique
+  module    TopicModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime   @default(now())
+
+  questions ModuleTestQuestion[]
+  attempts  ModuleTestAttempt[]
+}
+
+model ModuleTestQuestion {
+  id       String     @id @default(cuid())
+  testId   String
+  test     ModuleTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+  order    Int
+  text     String
+  options  ModuleTestOption[]
+  answers  ModuleTestAttemptAnswer[]
+
+  @@unique([testId, order])
+}
+
+model ModuleTestOption {
+  id         String            @id @default(cuid())
+  questionId String
+  question   ModuleTestQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  order      Int
+  text       String
+  isCorrect  Boolean           @default(false)
+
+  @@unique([questionId, order])
+}
+
+model ModuleTestAttempt {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  testId      String
+  test        ModuleTest    @relation(fields: [testId], references: [id], onDelete: Cascade)
+  score       Int?
+  /// Процент верных ответов (0..100)
+  scorePct    Int?
+  passed      Boolean?
+  startedAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  answers ModuleTestAttemptAnswer[]
+
+  @@index([clientId, testId])
+}
+
+model ModuleTestAttemptAnswer {
+  id         String            @id @default(cuid())
+  attemptId  String
+  attempt    ModuleTestAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   ModuleTestQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  optionId   String?
+
+  @@unique([attemptId, questionId])
+}
+
+/// Сессия изучения модуля: открытие → закрытие. Сумма durationSec = время по модулю.
+model ModuleSession {
+  id          String        @id @default(cuid())
+  clientId    String
+  client      ClientProfile @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  moduleId    String
+  module      TopicModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  startedAt   DateTime      @default(now())
+  endedAt     DateTime?
+  durationSec Int?
+
+  @@index([clientId, moduleId])
+  @@index([clientId, moduleId, endedAt])
 }
 
 /// Текстовый материал темы. Контент в БД (небольшие файлы-тексты).

@@ -26,6 +26,7 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginTouched, setLoginTouched] = useState(false);
+  const [allSelected, setAllSelected] = useState(false);
 
   useEffect(() => {
     if (loginTouched || !firstName.trim() || !lastName.trim()) return;
@@ -129,8 +130,17 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-base font-medium text-slate-800">
-            Назначить темы
+            Назначить классификации
           </legend>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setAllSelected((v) => !v)}
+            >
+              {allSelected ? "Снять все" : "Отметить все"}
+            </Button>
+          </div>
           {topics.map((topic) => (
             <label
               key={topic.id}
@@ -140,7 +150,8 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
                 type="checkbox"
                 name="topicIds"
                 value={topic.id}
-                defaultChecked
+                defaultChecked={allSelected}
+                key={`${allSelected}-${topic.id}`}
                 className="h-5 w-5"
               />
               <span>

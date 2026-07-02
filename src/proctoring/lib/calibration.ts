@@ -66,6 +66,8 @@ export function compareToCalibration(
   irisDeltaX: number;
   irisDeltaY: number;
   lookingDirection: LookingDirection;
+  /** Head moved off-center but iris still tracks the screen. */
+  isGazeDissociated: boolean;
 } {
   if (!profile || !frame.faceDetected) {
     return {
@@ -74,6 +76,7 @@ export function compareToCalibration(
       irisDeltaX: 0,
       irisDeltaY: 0,
       lookingDirection: frame.lookingDirection,
+      isGazeDissociated: false,
     };
   }
 
@@ -84,15 +87,20 @@ export function compareToCalibration(
   const irisDeltaY = frame.iris.averageIrisY - base.irisY;
 
   let lookingDirection: LookingDirection = "center";
+  let directionFromHead = false;
 
   if (headDeltaYaw > getStepDelta(profile, "right", "headYaw", 8)) {
     lookingDirection = "right";
+    directionFromHead = true;
   } else if (headDeltaYaw < -getStepDelta(profile, "left", "headYaw", 8)) {
     lookingDirection = "left";
+    directionFromHead = true;
   } else if (headDeltaPitch > getStepDelta(profile, "down", "headPitch", 8)) {
     lookingDirection = "down";
+    directionFromHead = true;
   } else if (headDeltaPitch < -getStepDelta(profile, "up", "headPitch", 8)) {
     lookingDirection = "up";
+    directionFromHead = true;
   } else if (Math.abs(irisDeltaX) > 0.12 || Math.abs(irisDeltaY) > 0.12) {
     if (Math.abs(irisDeltaX) > Math.abs(irisDeltaY)) {
       lookingDirection = irisDeltaX > 0 ? "right" : "left";
@@ -101,12 +109,19 @@ export function compareToCalibration(
     }
   }
 
+  const headDeviated = lookingDirection !== "center";
+  const irisNearCenter =
+    Math.abs(irisDeltaX) < 0.09 && Math.abs(irisDeltaY) < 0.09;
+  const isGazeDissociated =
+    directionFromHead && headDeviated && irisNearCenter;
+
   return {
     headDeltaYaw,
     headDeltaPitch,
     irisDeltaX,
     irisDeltaY,
     lookingDirection,
+    isGazeDissociated,
   };
 }
 
@@ -119,7 +134,7 @@ function getStepDelta(
   const center = profile.center[key] as number;
   const target = profile[step][key] as number;
   const delta = Math.abs(target - center);
-  return delta > 0 ? delta * 0.55 : fallback;
+  return delta > 0 ? delta * 0.65 : fallback;
 }
 
 export const CALIBRATION_STORAGE_KEY = "centurion-proctor-calibration";

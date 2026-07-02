@@ -251,7 +251,7 @@ export const EVENT_SEVERITY: Record<ProctorEventType, EventSeverity> =
 export const ATTENTION_THRESHOLDS_MS = {
   faceMissing: 2000,
   multipleFaces: 1000,
-  headTurnedAway: 5000,
+  headTurnedAway: 3500,
   gazeAway: 7000,
   lookingDown: 8000,
   eyesClosed: 3000,

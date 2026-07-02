@@ -234,10 +234,14 @@ export async function getClientDetails(clientId: string) {
 
   if (!client) return null;
 
-  const allTopics = await prisma.topic.findMany({ orderBy: { order: "asc" } });
+  const assignedTopicIds = new Set(client.topicAssignments.map((a) => a.topicId));
+  const allTopics = await prisma.topic.findMany({
+    where: { id: { in: [...assignedTopicIds] } },
+    orderBy: { order: "asc" },
+  });
 
   const topicProgress = allTopics.map((topic) => {
-    const assigned = client.topicAssignments.some((a) => a.topicId === topic.id);
+    const assigned = true;
     const sessions = client.topicSessions.filter((s) => s.topicId === topic.id);
     const totalTimeSec = totalTopicTimeSec(sessions);
     const hasOpenSession = sessions.some((s) => !s.endedAt);

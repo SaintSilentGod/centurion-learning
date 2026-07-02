@@ -76,7 +76,7 @@ export default async function ClientDetailsPage({
         </div>
       </Card>
 
-      <Card title="Прогресс по темам">
+      <Card title="Прогресс по классификациям">
         <ul className="divide-y divide-slate-200">
           {topicProgress.map((topic) => (
             <li key={topic.topicId} className="flex flex-col gap-2 py-4">
@@ -85,24 +85,20 @@ export default async function ClientDetailsPage({
                   {topic.topicOrder}. {topic.topicTitle}
                 </p>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-sm">
-                  {topic.assigned ? "Назначена" : "Не назначена"}
+                  Назначена
                 </span>
               </div>
-              {topic.assigned ? (
-                <div className="text-slate-700">
-                  <p>Время на теме: {formatDurationRu(topic.totalTimeSec)}</p>
-                  {topic.hasOpenSession ? (
-                    <p className="text-amber-700">Сейчас изучает тему</p>
-                  ) : null}
-                  {topic.testPassed !== null ? (
-                    <p>
-                      Тест: {topic.testPassed ? "пройден" : "не пройден"}
-                    </p>
-                  ) : (
-                    <p className="text-slate-500">Тест: ещё не проходил</p>
-                  )}
-                </div>
-              ) : null}
+              <div className="text-slate-700">
+                <p>Время: {formatDurationRu(topic.totalTimeSec)}</p>
+                {topic.hasOpenSession ? (
+                  <p className="text-amber-700">Сейчас изучает тему</p>
+                ) : null}
+                {topic.testPassed !== null ? (
+                  <p>Тест: {topic.testPassed ? "пройден" : "не пройден"}</p>
+                ) : (
+                  <p className="text-slate-500">Тест: ещё не проходил</p>
+                )}
+              </div>
             </li>
           ))}
         </ul>

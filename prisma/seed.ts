@@ -1,4 +1,6 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
 import { createSeedPrismaClient } from "../src/lib/prisma";
 import { hashPassword } from "../src/lib/auth/password";
 
@@ -7,88 +9,403 @@ const prisma = createSeedPrismaClient();
 const MOCK_TOPICS = [
   {
     order: 1,
-    title: "Тема 1. Основы специальности",
-    description: "Вводный материал и базовые понятия.",
+    title:
+      "Категория 1. Ответственные за обеспечение транспортной безопасности в субъекте транспортной инфраструктуры",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
     material: {
-      title: "Учебный текст — Тема 1",
-      content: `Добро пожаловать в первую тему обучения.
+      title: "Учебный текст — Категория 1",
+      content: `Категория 1: работники, назначенные ответственными за обеспечение транспортной безопасности в субъекте транспортной инфраструктуры.
 
-Здесь будет размещён учебный текст по основам специальности. Материал предназначен для спокойного последовательного изучения.
-
-Основные разделы:
-1. Введение в профессию
-2. Базовые термины и определения
-3. Требования к специалисту
-
-После изучения материала вам будет предложен короткий тест для закрепления знаний.`,
+Здесь будет размещён учебный материал по данной классификации.`,
     },
     test: {
-      title: "Тест по Теме 1",
+      title: "Тест по Категории 1",
       question: {
-        text: "Что является целью первой темы?",
+        text: "Кто относится к Категории 1?",
         options: [
-          { text: "Изучить основы специальности", isCorrect: true },
-          { text: "Сдать итоговый экзамен", isCorrect: false },
-          { text: "Оформить документы", isCorrect: false },
+          {
+            text: "Работники, назначенные ответственными за обеспечение транспортной безопасности в субъекте транспортной инфраструктуры",
+            isCorrect: true,
+          },
+          { text: "Работники группы быстрого реагирования", isCorrect: false },
+          { text: "Иные работники, не связанные с ТБ", isCorrect: false },
         ],
       },
     },
   },
   {
     order: 2,
-    title: "Тема 2. Практические навыки",
-    description: "Пошаговые инструкции и типовые ситуации.",
+    title:
+      "Категория 2. Ответственные за транспортную безопасность на объекте/ТС и персонал специализированных организаций",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
     material: {
-      title: "Учебный текст — Тема 2",
-      content: `Вторая тема посвящена практическим навыкам.
+      title: "Учебный текст — Категория 2",
+      content: `Категория 2: работники, ответственные за обеспечение транспортной безопасности на конкретном объекте или транспортном средстве, а также персонал специализированных организаций.
 
-Вы узнаете:
-— Как действовать в стандартных рабочих ситуациях
-— Какие ошибки встречаются чаще всего
-— Как правильно фиксировать результат работы
-
-Изучайте материал в удобном темпе. Время на тему учитывается автоматически.`,
+Здесь будет размещён учебный материал по данной классификации.`,
     },
     test: {
-      title: "Тест по Теме 2",
+      title: "Тест по Категории 2",
       question: {
-        text: "Когда начинается учёт времени по теме?",
+        text: "Кто относится к Категории 2?",
         options: [
-          { text: "При открытии темы", isCorrect: true },
-          { text: "При входе в систему", isCorrect: false },
-          { text: "В конце дня", isCorrect: false },
+          {
+            text: "Ответственные за ТБ на объекте/ТС и персонал специализированных организаций",
+            isCorrect: true,
+          },
+          { text: "Работники, осуществляющие досмотр", isCorrect: false },
+          { text: "Только администраторы системы", isCorrect: false },
         ],
       },
     },
   },
   {
     order: 3,
-    title: "Тема 3. Итоговое закрепление",
-    description: "Сводка и подготовка к самостоятельной работе.",
+    title:
+      "Категория 3. Руководители работ по обеспечению транспортной безопасности на объекте/ТС",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
     material: {
-      title: "Учебный текст — Тема 3",
-      content: `Третья тема объединяет полученные знания.
+      title: "Учебный текст — Категория 3",
+      content: `Категория 3: работники (субъекта инфраструктуры или подразделения безопасности), которые руководят работами, непосредственно связанными с обеспечением транспортной безопасности на объекте или транспортном средстве.
 
-Содержание:
-1. Краткая сводка по темам 1 и 2
-2. Чек-лист для самопроверки
-3. Рекомендации для дальнейшей работы
-
-После прохождения всех тем администратор увидит ваш прогресс и затраченное время.`,
+Здесь будет размещён учебный материал по данной классификации.`,
     },
     test: {
-      title: "Тест по Теме 3",
+      title: "Тест по Категории 3",
       question: {
-        text: "Где администратор видит время по темам?",
+        text: "Кто относится к Категории 3?",
         options: [
-          { text: "В карточке клиента", isCorrect: true },
-          { text: "Только в архиве", isCorrect: false },
-          { text: "В общем отчёте без деталей", isCorrect: false },
+          {
+            text: "Работники, руководящие работами по обеспечению ТБ на объекте/ТС",
+            isCorrect: true,
+          },
+          { text: "Работники, выполняющие повторный досмотр", isCorrect: false },
+          { text: "Иные работники субъекта ТИ", isCorrect: false },
+        ],
+      },
+    },
+  },
+  {
+    order: 4,
+    title:
+      "Категория 4. Работники подразделения транспортной безопасности (группа быстрого реагирования)",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
+    material: {
+      title: "Учебный текст — Категория 4",
+      content:
+        "Категория 4: работники подразделения транспортной безопасности, включённые в состав группы быстрого реагирования.\n\nЗдесь будет размещён учебный материал по данной классификации.",
+    },
+    test: {
+      title: "Тест по Категории 4",
+      question: {
+        text: "Кто относится к Категории 4?",
+        options: [
+          {
+            text: "Работники подразделения ТБ, включённые в состав группы быстрого реагирования",
+            isCorrect: true,
+          },
+          { text: "Ответственные за ТБ в субъекте ТИ", isCorrect: false },
+          { text: "Операторы технических средств ТБ", isCorrect: false },
+        ],
+      },
+    },
+  },
+  {
+    order: 5,
+    title:
+      "Категория 5. Работники подразделения транспортной безопасности (досмотр/доп. досмотр/повторный досмотр)",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
+    material: {
+      title: "Учебный текст — Категория 5",
+      content:
+        "Категория 5: работники подразделения транспортной безопасности, которые осуществляют досмотр, дополнительный досмотр и повторный досмотр.\n\nЗдесь будет размещён учебный материал по данной классификации.",
+    },
+    test: {
+      title: "Тест по Категории 5",
+      question: {
+        text: "Кто относится к Категории 5?",
+        options: [
+          {
+            text: "Работники подразделения ТБ, осуществляющие досмотр/доп. досмотр/повторный досмотр",
+            isCorrect: true,
+          },
+          { text: "Группа быстрого реагирования", isCorrect: false },
+          { text: "Наблюдение и (или) собеседование", isCorrect: false },
+        ],
+      },
+    },
+  },
+  {
+    order: 6,
+    title:
+      "Категория 6. Работники подразделения транспортной безопасности (наблюдение и/или собеседование)",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
+    material: {
+      title: "Учебный текст — Категория 6",
+      content:
+        "Категория 6: работники подразделения транспортной безопасности, которые проводят наблюдение и (или) собеседование.\n\nЗдесь будет размещён учебный материал по данной классификации.",
+    },
+    test: {
+      title: "Тест по Категории 6",
+      question: {
+        text: "Кто относится к Категории 6?",
+        options: [
+          {
+            text: "Работники подразделения ТБ, проводящие наблюдение и (или) собеседование",
+            isCorrect: true,
+          },
+          { text: "Операторы техсредств обеспечения ТБ", isCorrect: false },
+          { text: "Досмотр и повторный досмотр", isCorrect: false },
+        ],
+      },
+    },
+  },
+  {
+    order: 7,
+    title:
+      "Категория 7. Управляющие техническими средствами обеспечения транспортной безопасности",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
+    material: {
+      title: "Учебный текст — Категория 7",
+      content:
+        "Категория 7: работники (субъекта инфраструктуры или подразделения безопасности), управляющие техническими средствами обеспечения транспортной безопасности.\n\nЗдесь будет размещён учебный материал по данной классификации.",
+    },
+    test: {
+      title: "Тест по Категории 7",
+      question: {
+        text: "Кто относится к Категории 7?",
+        options: [
+          {
+            text: "Работники, управляющие техническими средствами обеспечения транспортной безопасности",
+            isCorrect: true,
+          },
+          { text: "Персонал специализированных организаций", isCorrect: false },
+          { text: "Руководители работ по ТБ на объекте/ТС", isCorrect: false },
+        ],
+      },
+    },
+  },
+  {
+    order: 8,
+    title:
+      "Категория 8. Иные работники, выполняющие работы по обеспечению транспортной безопасности на объекте/ТС",
+    description:
+      "Классификация из ПП РФ от 01.06.2023 № 905 (Приложение № 1).",
+    material: {
+      title: "Учебный текст — Категория 8",
+      content:
+        "Категория 8: иные работники субъекта транспортной инфраструктуры или подразделения транспортной безопасности, выполняющие работы, непосредственно связанные с обеспечением транспортной безопасности на объекте или транспортном средстве.\n\nЗдесь будет размещён учебный материал по данной классификации.",
+    },
+    test: {
+      title: "Тест по Категории 8",
+      question: {
+        text: "Кто относится к Категории 8?",
+        options: [
+          {
+            text: "Иные работники, выполняющие работы, непосредственно связанные с обеспечением ТБ на объекте/ТС",
+            isCorrect: true,
+          },
+          { text: "Только работники досмотра", isCorrect: false },
+          { text: "Только группа быстрого реагирования", isCorrect: false },
         ],
       },
     },
   },
 ] as const;
+
+type ParsedModuleTest = {
+  moduleOrder: number;
+  moduleTitle?: string;
+  questions: Array<{
+    text: string;
+    options: Array<{ text: string; isCorrect: boolean }>;
+  }>;
+};
+
+function normalizeWs(value: string) {
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/\u2028/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+const OPTION_LETTER_TO_INDEX: Record<string, number> = {
+  А: 0,
+  A: 0,
+  Б: 1,
+  B: 1,
+  В: 2,
+  V: 2,
+  Г: 3,
+  G: 3,
+};
+
+function applyCorrectLetter(
+  question: ParsedModuleTest["questions"][number],
+  letter: string,
+) {
+  const idx = OPTION_LETTER_TO_INDEX[letter.toUpperCase()];
+  if (idx === undefined || !question.options[idx]) return;
+
+  for (const [i, option] of question.options.entries()) {
+    option.isCorrect = i === idx;
+  }
+}
+
+function parseModuleTestsFromTxt(raw: string): ParsedModuleTest[] {
+  const text = normalizeWs(raw);
+  if (!text) return [];
+
+  const lines = text.split("\n").map((l) => l.trim());
+  const modules: ParsedModuleTest[] = [];
+
+  let current: ParsedModuleTest | null = null;
+  let currentQ: ParsedModuleTest["questions"][number] | null = null;
+  let awaitingQuestionText = false;
+
+  function flushQuestion() {
+    if (!current || !currentQ) return;
+    if (currentQ.text && currentQ.options.length >= 2) {
+      current.questions.push(currentQ);
+    }
+    currentQ = null;
+    awaitingQuestionText = false;
+  }
+
+  function flushModule() {
+    flushQuestion();
+    if (!current) return;
+    if (current.moduleOrder >= 2 && current.questions.length > 0) {
+      modules.push(current);
+    }
+    current = null;
+  }
+
+  const moduleHeaderRe =
+    /^(?:Тест\s+по\s+)?Модул[ью]\s*(\d+)\.?\s*(.*)$/i;
+  const questionHeaderRe = /^Вопрос\s*(\d+)\.?\s*(.*)$/i;
+  const numberedQuestionRe = /^(\d+)[\.\)]\s+(.+)$/;
+  const optionLineRe = /^(?:[•*\-–]\s*)?([АAБBВVГG])\)\s*(.+)$/i;
+  const bulletOptionRe = /^(?:[•*\-–]\s+)(.+)$/;
+  const correctAnswerLineRe = /^Правильный ответ\s*:\s*([A-DА-Я])\s*$/i;
+  const optionsHeaderRe = /^Варианты ответов\s*:?\s*$/i;
+
+  for (const line of lines) {
+    if (!line) continue;
+
+    const modMatch = line.match(moduleHeaderRe);
+    if (modMatch) {
+      flushModule();
+      const moduleOrder = Number(modMatch[1]);
+      const moduleTitle = modMatch[2]?.trim() || undefined;
+      current = { moduleOrder, moduleTitle, questions: [] };
+      continue;
+    }
+
+    if (!current) continue;
+
+    if (optionsHeaderRe.test(line)) {
+      awaitingQuestionText = false;
+      continue;
+    }
+
+    const correctLine = line.match(correctAnswerLineRe);
+    if (correctLine) {
+      if (currentQ) applyCorrectLetter(currentQ, correctLine[1]);
+      continue;
+    }
+
+    const questionHeaderMatch = line.match(questionHeaderRe);
+    if (questionHeaderMatch) {
+      flushQuestion();
+      const inlineText = questionHeaderMatch[2]?.trim() ?? "";
+      currentQ = { text: inlineText, options: [] };
+      awaitingQuestionText = inlineText.length === 0;
+      continue;
+    }
+
+    const numberedQuestionMatch = line.match(numberedQuestionRe);
+    if (numberedQuestionMatch) {
+      flushQuestion();
+      currentQ = { text: numberedQuestionMatch[2].trim(), options: [] };
+      awaitingQuestionText = false;
+      continue;
+    }
+
+    const letterOptionMatch = line.match(optionLineRe);
+    const bulletOptionMatch = letterOptionMatch ? null : line.match(bulletOptionRe);
+    if (letterOptionMatch || bulletOptionMatch) {
+      if (!currentQ) {
+        currentQ = { text: "Вопрос", options: [] };
+      }
+      awaitingQuestionText = false;
+
+      const rawOptionText = (letterOptionMatch?.[2] ?? bulletOptionMatch?.[1] ?? "").trim();
+      const hasStar =
+        /\*\s*$/.test(rawOptionText) ||
+        /\(Правильный ответ\)\s*$/i.test(rawOptionText);
+      const optionText = rawOptionText
+        .replace(/\(Правильный ответ\)\s*$/i, "")
+        .replace(/\*\s*$/, "")
+        .trim();
+
+      if (!optionText || optionsHeaderRe.test(optionText)) continue;
+
+      currentQ.options.push({
+        text: optionText,
+        isCorrect: hasStar,
+      });
+      continue;
+    }
+
+    if (currentQ && awaitingQuestionText) {
+      currentQ.text = currentQ.text
+        ? `${currentQ.text} ${line}`.trim()
+        : line;
+      continue;
+    }
+  }
+
+  flushModule();
+
+  for (const mod of modules) {
+    for (const q of mod.questions) {
+      const correctCount = q.options.filter((o) => o.isCorrect).length;
+      if (correctCount === 0 && q.options.length > 0) {
+        q.options[0].isCorrect = true;
+      } else if (correctCount > 1) {
+        let found = false;
+        for (const o of q.options) {
+          if (!found && o.isCorrect) {
+            found = true;
+          } else {
+            o.isCorrect = false;
+          }
+        }
+      }
+    }
+  }
+
+  return modules.sort((a, b) => a.moduleOrder - b.moduleOrder);
+}
+
+function getTestsTxtPathForCategoryOrder(order: number) {
+  const dir =
+    process.env.TESTS_TXT_DIR ??
+    path.join(process.env.HOME ?? "", "Downloads");
+  // Seed expects files to already be converted to txt (we can generate them locally via textutil)
+  const name = `tests_cat${order}.txt`;
+  return path.join(dir, name);
+}
 
 async function main() {
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin-change-me-15";
@@ -171,6 +488,109 @@ async function main() {
           isCorrect: option.isCorrect,
         },
       });
+    }
+
+    // --- Modules (1..N) + tests for modules 2..N ---
+    // Module 1: теория (пока заглушка), без теста
+    const module1 = await prisma.topicModule.upsert({
+      where: { topicId_order: { topicId: topic.id, order: 1 } },
+      update: { title: "Модуль 1. Теория (в разработке)" },
+      create: {
+        topicId: topic.id,
+        order: 1,
+        title: "Модуль 1. Теория (в разработке)",
+      },
+    });
+
+    await prisma.moduleMaterial.upsert({
+      where: { moduleId_order: { moduleId: module1.id, order: 0 } },
+      update: {
+        title: "Теория",
+        content:
+          "Теория для этого модуля пока не добавлена. Сейчас доступен тестовый контент.",
+      },
+      create: {
+        moduleId: module1.id,
+        order: 0,
+        title: "Теория",
+        content:
+          "Теория для этого модуля пока не добавлена. Сейчас доступен тестовый контент.",
+      },
+    });
+
+    const testsTxtPath = getTestsTxtPathForCategoryOrder(topicData.order);
+    if (fs.existsSync(testsTxtPath)) {
+      const raw = fs.readFileSync(testsTxtPath, "utf8");
+      const parsedModules = parseModuleTestsFromTxt(raw);
+
+      for (const parsed of parsedModules) {
+        const mod = await prisma.topicModule.upsert({
+          where: { topicId_order: { topicId: topic.id, order: parsed.moduleOrder } },
+          update: {
+            title:
+              parsed.moduleTitle?.length
+                ? `Модуль ${parsed.moduleOrder}. ${parsed.moduleTitle}`
+                : `Модуль ${parsed.moduleOrder}`,
+          },
+          create: {
+            topicId: topic.id,
+            order: parsed.moduleOrder,
+            title:
+              parsed.moduleTitle?.length
+                ? `Модуль ${parsed.moduleOrder}. ${parsed.moduleTitle}`
+                : `Модуль ${parsed.moduleOrder}`,
+          },
+        });
+
+        await prisma.moduleMaterial.upsert({
+          where: { moduleId_order: { moduleId: mod.id, order: 0 } },
+          update: {
+            title: "Теория",
+            content:
+              "Теория для этого модуля пока не добавлена. Ниже будет тест.",
+          },
+          create: {
+            moduleId: mod.id,
+            order: 0,
+            title: "Теория",
+            content:
+              "Теория для этого модуля пока не добавлена. Ниже будет тест.",
+          },
+        });
+
+        const test = await prisma.moduleTest.upsert({
+          where: { moduleId: mod.id },
+          update: { title: `Тест по модулю ${parsed.moduleOrder}` },
+          create: { moduleId: mod.id, title: `Тест по модулю ${parsed.moduleOrder}` },
+        });
+
+        // Clear-and-recreate questions/options (simplest deterministic sync)
+        await prisma.moduleTestQuestion.deleteMany({ where: { testId: test.id } });
+
+        for (const [qIndex, q] of parsed.questions.entries()) {
+          const question = await prisma.moduleTestQuestion.create({
+            data: {
+              testId: test.id,
+              order: qIndex,
+              text: q.text,
+            },
+          });
+
+          for (const [oIndex, o] of q.options.entries()) {
+            await prisma.moduleTestOption.create({
+              data: {
+                questionId: question.id,
+                order: oIndex,
+                text: o.text,
+                isCorrect: o.isCorrect,
+              },
+            });
+          }
+        }
+      }
+    } else {
+      // If tests are not available on this machine, we still keep module 1.
+      // Tests can be seeded later by placing tests_cat{1..8}.txt in TESTS_TXT_DIR and re-running seed.
     }
   }
 
