@@ -709,7 +709,13 @@ async function main() {
   }
 
   console.log("Seed завершён.");
-  console.log("Админ: логин admin, пароль:", adminPassword);
+  if (process.env.NODE_ENV === "development") {
+    console.log("Админ: логин admin, пароль:", adminPassword);
+  } else {
+    console.log(
+      "Админ: логин admin. Пароль задан через SEED_ADMIN_PASSWORD (не логируется).",
+    );
+  }
 }
 
 main()

@@ -341,7 +341,7 @@ export async function endModuleSessionAction(sessionId: string) {
 export async function submitModuleTestAction(
   moduleId: string,
   formData: FormData,
-) {
+): Promise<{ error: string } | void> {
   const user = await requireClient();
   if (!user.clientProfileId) throw new Error("Профиль клиента не найден");
 

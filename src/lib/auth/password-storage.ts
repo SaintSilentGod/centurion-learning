@@ -9,9 +9,13 @@ const ALGORITHM = "aes-256-gcm";
 const SALT = "centurion-learning-password-v1";
 
 function getKey(): Buffer {
-  const secret = process.env.AUTH_SECRET;
+  // Отдельный ключ для passwordEncrypted — не смешивать с AUTH_SECRET сессий.
+  const secret =
+    process.env.PASSWORD_STORAGE_SECRET ?? process.env.AUTH_SECRET;
   if (!secret) {
-    throw new Error("AUTH_SECRET не задан");
+    throw new Error(
+      "PASSWORD_STORAGE_SECRET или AUTH_SECRET не задан для шифрования паролей",
+    );
   }
   return scryptSync(secret, SALT, 32);
 }

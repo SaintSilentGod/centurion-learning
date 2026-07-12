@@ -102,6 +102,7 @@ export function ModuleLearningView({
   const [testIntroOpen, setTestIntroOpen] = useState(false);
   const [theoryUnlocked, setTheoryUnlocked] = useState(false);
   const [testUnlocked, setTestUnlocked] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
 
   useEffect(() => {
     const theorySeen = localStorage.getItem(introStorageKey(moduleId, "theory"));
@@ -131,6 +132,14 @@ export function ModuleLearningView({
       return;
     }
     setTestIntroOpen(true);
+  }
+
+  async function handleTestSubmit(formData: FormData) {
+    setTestError(null);
+    const result = await submitModuleTestAction(moduleId, formData);
+    if (result?.error) {
+      setTestError(result.error);
+    }
   }
 
   return (
@@ -228,8 +237,13 @@ export function ModuleLearningView({
                 </p>
               ) : null}
 
-              <form action={submitModuleTestAction.bind(null, moduleId)}>
+              <form action={handleTestSubmit}>
                 <div className="flex flex-col gap-6">
+                  {testError ? (
+                    <p className="rounded-lg bg-red-50 px-4 py-3 text-base text-red-900">
+                      {testError}
+                    </p>
+                  ) : null}
                   {test!.questions.map((q, idx) => (
                     <div
                       key={q.id}
