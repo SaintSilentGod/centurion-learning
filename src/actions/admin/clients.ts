@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/username";
 import { formatFioFromProfile } from "@/lib/format-name";
 import { prisma } from "@/lib/prisma";
+import { isTransportType } from "@/lib/transport";
 import { totalTopicTimeSec } from "@/lib/time-tracking";
 
 export type CreateClientState = {
@@ -54,6 +55,7 @@ export async function createClientAction(
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const transportTypeRaw = String(formData.get("transportType") ?? "").trim();
   const topicIds = formData.getAll("topicIds").map(String);
 
   if (!firstName || !lastName || !patronymic) {
@@ -80,8 +82,12 @@ export async function createClientAction(
     return { error: "Пароль должен быть не короче 8 символов" };
   }
 
+  if (!isTransportType(transportTypeRaw)) {
+    return { error: "Выберите вид транспорта" };
+  }
+
   if (topicIds.length === 0) {
-    return { error: "Выберите хотя бы одну тему" };
+    return { error: "Выберите хотя бы одну классификацию" };
   }
 
   const existingUser = await prisma.user.findUnique({ where: { username } });
@@ -111,6 +117,7 @@ export async function createClientAction(
           lastName,
           patronymic,
           dateOfBirth,
+          transportType: transportTypeRaw,
           createdById: admin.id,
           topicAssignments: {
             create: topicIds.map((topicId) => ({ topicId })),
@@ -263,6 +270,24 @@ export async function getClientDetails(clientId: string) {
   });
 
   return { client, topicProgress };
+}
+
+export async function toggleFinalTestProctoringAction(clientId: string): Promise<void> {
+  await requireAdmin();
+
+  const client = await prisma.clientProfile.findUnique({
+    where: { id: clientId },
+    select: { finalTestProctoringEnabled: true },
+  });
+
+  if (!client) return;
+
+  await prisma.clientProfile.update({
+    where: { id: clientId },
+    data: { finalTestProctoringEnabled: !client.finalTestProctoringEnabled },
+  });
+
+  revalidatePath(`/admin/clients/${clientId}`);
 }
 
 export { suggestUsername };

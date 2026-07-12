@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { sessionDurationSec } from "@/lib/time-tracking";
+import { MODULE_THEORY_REQUIRED_SEC } from "@/lib/transport";
+import { sessionDurationSec, totalTopicTimeSec } from "@/lib/time-tracking";
 
 export async function getClientLearningData() {
   const user = await requireClient();
@@ -231,7 +232,6 @@ export async function getModuleData(moduleId: string) {
     where: { id: moduleId },
     include: {
       topic: true,
-      materials: { orderBy: { order: "asc" } },
       test: {
         include: {
           questions: {
@@ -251,7 +251,8 @@ export async function getModuleData(moduleId: string) {
     },
     include: {
       client: {
-        include: {
+        select: {
+          transportType: true,
           moduleTestAttempts: { include: { test: true } },
         },
       },
@@ -260,6 +261,19 @@ export async function getModuleData(moduleId: string) {
   });
 
   if (!assignment) return null;
+
+  const materials = await prisma.moduleMaterial.findMany({
+    where: {
+      moduleId,
+      transportType: assignment.client.transportType,
+    },
+    orderBy: { order: "asc" },
+  });
+
+  const moduleSessions = await prisma.moduleSession.findMany({
+    where: { clientId: user.clientProfileId, moduleId },
+  });
+  const theoryTimeSec = totalTopicTimeSec(moduleSessions);
 
   const passedByModuleId = new Set<string>();
   for (const a of assignment.client.moduleTestAttempts) {
@@ -298,9 +312,10 @@ export async function getModuleData(moduleId: string) {
 
   return {
     locked: false as const,
-    module: topicModule,
+    module: { ...topicModule, materials },
     sessionId: session.id,
     bestAttempt,
+    theoryTimeSec,
   };
 }
 
@@ -340,6 +355,13 @@ export async function submitModuleTestAction(
   if (!topicModule) return { error: "Модуль не найден" };
   if (topicModule.order === 1) return { error: "У модуля 1 нет теста" };
   if (!topicModule.test) return { error: "Тест не найден" };
+
+  const moduleSessions = await prisma.moduleSession.findMany({
+    where: { clientId: user.clientProfileId, moduleId },
+  });
+  if (totalTopicTimeSec(moduleSessions) < MODULE_THEORY_REQUIRED_SEC) {
+    return { error: "Для доступа к тесту необходимо изучить теорию не менее 2 часов" };
+  }
 
   // gating: ensure unlocked
   const prev = topicModule.topic.modules.find((m) => m.order === topicModule.order - 1);

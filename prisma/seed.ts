@@ -402,9 +402,140 @@ function getTestsTxtPathForCategoryOrder(order: number) {
   const dir =
     process.env.TESTS_TXT_DIR ??
     path.join(process.env.HOME ?? "", "Downloads");
-  // Seed expects files to already be converted to txt (we can generate them locally via textutil)
   const name = `tests_cat${order}.txt`;
   return path.join(dir, name);
+}
+
+function getTheoryTxtPathForCategoryOrder(order: number) {
+  const dir =
+    process.env.THEORY_TXT_DIR ??
+    path.join(process.env.HOME ?? "", "Downloads");
+  return path.join(dir, `tb${order}.txt`);
+}
+
+type ParsedTheoryModule = {
+  order: number;
+  title: string;
+  sections: Array<{ title: string; content: string; order: number }>;
+};
+
+function parseTheoryModulesFromTxt(raw: string): ParsedTheoryModule[] {
+  const text = normalizeWs(raw).replace(/\f/g, "\n");
+  const lines = text.split("\n");
+  const modules: ParsedTheoryModule[] = [];
+
+  const moduleHeaderRe = /^Модул[ью]\s*(\d+)\.\s*(.+)$/i;
+  const subtopicRe = /^Тема\s+(\d+(?:\.\d+)?)\.\s*(.*)$/i;
+
+  let current: ParsedTheoryModule | null = null;
+  let currentSection: ParsedTheoryModule["sections"][number] | null = null;
+  let sectionOrder = 0;
+
+  function flushSection() {
+    if (!current || !currentSection) return;
+    if (currentSection.title.trim() || currentSection.content.trim()) {
+      current.sections.push(currentSection);
+    }
+    currentSection = null;
+  }
+
+  function flushModule() {
+    flushSection();
+    if (current && current.sections.length > 0) {
+      modules.push(current);
+    }
+    current = null;
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      if (currentSection) currentSection.content += "\n";
+      continue;
+    }
+
+    const modMatch = line.match(moduleHeaderRe);
+    if (modMatch) {
+      flushModule();
+      current = {
+        order: Number(modMatch[1]),
+        title: modMatch[2].trim(),
+        sections: [],
+      };
+      sectionOrder = 0;
+      continue;
+    }
+
+    if (!current) continue;
+
+    const subMatch = line.match(subtopicRe);
+    if (subMatch) {
+      flushSection();
+      sectionOrder += 1;
+      const inline = subMatch[2].trim();
+      currentSection = {
+        title: `Тема ${subMatch[1]}.${inline ? ` ${inline}` : ""}`.trim(),
+        content: inline,
+        order: sectionOrder,
+      };
+      continue;
+    }
+
+    if (!currentSection) {
+      sectionOrder += 1;
+      currentSection = {
+        title: `Раздел ${sectionOrder}`,
+        content: line,
+        order: sectionOrder,
+      };
+    } else if (!currentSection.content && currentSection.title.startsWith("Тема")) {
+      currentSection.content = line;
+    } else {
+      currentSection.content += (currentSection.content ? "\n" : "") + line;
+    }
+  }
+
+  flushModule();
+  return modules.sort((a, b) => a.order - b.order);
+}
+
+async function seedRoadTheoryForTopic(topicId: string, categoryOrder: number) {
+  const theoryPath = getTheoryTxtPathForCategoryOrder(categoryOrder);
+  if (!fs.existsSync(theoryPath)) return;
+
+  const theoryModules = parseTheoryModulesFromTxt(
+    fs.readFileSync(theoryPath, "utf8"),
+  );
+
+  for (const theory of theoryModules) {
+    const mod = await prisma.topicModule.upsert({
+      where: { topicId_order: { topicId, order: theory.order } },
+      update: {
+        title: `Модуль ${theory.order}. ${theory.title}`,
+      },
+      create: {
+        topicId,
+        order: theory.order,
+        title: `Модуль ${theory.order}. ${theory.title}`,
+      },
+    });
+
+    await prisma.moduleMaterial.deleteMany({
+      where: { moduleId: mod.id, transportType: "ROAD" },
+    });
+
+    for (const section of theory.sections) {
+      await prisma.moduleMaterial.create({
+        data: {
+          moduleId: mod.id,
+          transportType: "ROAD",
+          order: section.order,
+          title: section.title,
+          content: section.content.trim(),
+        },
+      });
+    }
+  }
 }
 
 async function main() {
@@ -490,31 +621,32 @@ async function main() {
       });
     }
 
-    // --- Modules (1..N) + tests for modules 2..N ---
-    // Module 1: теория (пока заглушка), без теста
+    // --- Modules: tests (модули 2+) + теория (дорога) из TB-файлов ---
     const module1 = await prisma.topicModule.upsert({
       where: { topicId_order: { topicId: topic.id, order: 1 } },
-      update: { title: "Модуль 1. Теория (в разработке)" },
+      update: {},
       create: {
         topicId: topic.id,
         order: 1,
-        title: "Модуль 1. Теория (в разработке)",
+        title: "Модуль 1",
       },
     });
 
     await prisma.moduleMaterial.upsert({
-      where: { moduleId_order: { moduleId: module1.id, order: 0 } },
-      update: {
-        title: "Теория",
-        content:
-          "Теория для этого модуля пока не добавлена. Сейчас доступен тестовый контент.",
+      where: {
+        moduleId_transportType_order: {
+          moduleId: module1.id,
+          transportType: "ROAD",
+          order: 0,
+        },
       },
+      update: {},
       create: {
         moduleId: module1.id,
+        transportType: "ROAD",
         order: 0,
         title: "Теория",
-        content:
-          "Теория для этого модуля пока не добавлена. Сейчас доступен тестовый контент.",
+        content: "Теория для этого модуля пока не добавлена.",
       },
     });
 
@@ -542,29 +674,12 @@ async function main() {
           },
         });
 
-        await prisma.moduleMaterial.upsert({
-          where: { moduleId_order: { moduleId: mod.id, order: 0 } },
-          update: {
-            title: "Теория",
-            content:
-              "Теория для этого модуля пока не добавлена. Ниже будет тест.",
-          },
-          create: {
-            moduleId: mod.id,
-            order: 0,
-            title: "Теория",
-            content:
-              "Теория для этого модуля пока не добавлена. Ниже будет тест.",
-          },
-        });
-
         const test = await prisma.moduleTest.upsert({
           where: { moduleId: mod.id },
           update: { title: `Тест по модулю ${parsed.moduleOrder}` },
           create: { moduleId: mod.id, title: `Тест по модулю ${parsed.moduleOrder}` },
         });
 
-        // Clear-and-recreate questions/options (simplest deterministic sync)
         await prisma.moduleTestQuestion.deleteMany({ where: { testId: test.id } });
 
         for (const [qIndex, q] of parsed.questions.entries()) {
@@ -588,10 +703,9 @@ async function main() {
           }
         }
       }
-    } else {
-      // If tests are not available on this machine, we still keep module 1.
-      // Tests can be seeded later by placing tests_cat{1..8}.txt in TESTS_TXT_DIR and re-running seed.
     }
+
+    await seedRoadTheoryForTopic(topic.id, topicData.order);
   }
 
   console.log("Seed завершён.");

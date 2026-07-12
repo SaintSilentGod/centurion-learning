@@ -5,9 +5,11 @@ import {
   getClientDetails,
   restoreClientAction,
 } from "@/actions/admin/clients";
+import { ProctoringToggle } from "@/components/features/admin/proctoring-toggle";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFioFromProfile } from "@/lib/format-name";
+import { transportTypeLabel } from "@/lib/transport";
 import { formatDurationRu } from "@/lib/time-tracking";
 
 export default async function ClientDetailsPage({
@@ -46,6 +48,10 @@ export default async function ClientDetailsPage({
             </dd>
           </div>
           <div>
+            <dt className="text-slate-500">Вид транспорта</dt>
+            <dd className="font-medium">{transportTypeLabel(client.transportType)}</dd>
+          </div>
+          <div>
             <dt className="text-slate-500">Статус</dt>
             <dd className="font-medium">
               {archived ? "В архиве" : "Активный"}
@@ -59,7 +65,12 @@ export default async function ClientDetailsPage({
           </div>
         </dl>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-col gap-4">
+          <ProctoringToggle
+            clientId={client.id}
+            enabled={client.finalTestProctoringEnabled}
+          />
+
           {archived ? (
             <form action={restoreClientAction.bind(null, client.id)}>
               <Button type="submit" variant="secondary">

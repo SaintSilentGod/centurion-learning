@@ -1,6 +1,7 @@
 import { LoginForm } from "@/components/features/auth/login-form";
 import { APP_NAME } from "@/constants/ru";
 import { getSessionUser } from "@/lib/auth/session";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default async function LoginPage() {
@@ -10,6 +11,9 @@ export default async function LoginPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
+      <Link href="/" className="text-blue-700 hover:underline">
+        ← На главную
+      </Link>
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Вход в {APP_NAME}</h1>
         <p className="text-slate-600">

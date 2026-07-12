@@ -8,9 +8,12 @@ import {
   type CreateClientState,
 } from "@/actions/admin/clients";
 import { suggestUsername } from "@/lib/auth/username";
+import { TransportTypeSelector } from "@/components/features/admin/transport-type-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import type { TransportTypeValue } from "@/lib/transport";
+import { formatCategoryAssignmentLabel } from "@/lib/format-category";
 
 type Topic = { id: string; order: number; title: string };
 
@@ -27,6 +30,7 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
   const [password, setPassword] = useState("");
   const [loginTouched, setLoginTouched] = useState(false);
   const [allSelected, setAllSelected] = useState(false);
+  const [transportType, setTransportType] = useState<TransportTypeValue | "">("");
 
   useEffect(() => {
     if (loginTouched || !firstName.trim() || !lastName.trim()) return;
@@ -128,6 +132,8 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
           </div>
         </div>
 
+        <TransportTypeSelector value={transportType} onChange={setTransportType} />
+
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 text-base font-medium text-slate-800">
             Назначить классификации
@@ -155,7 +161,7 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
                 className="h-5 w-5"
               />
               <span>
-                {topic.order}. {topic.title}
+                {formatCategoryAssignmentLabel(topic.order, topic.title)}
               </span>
             </label>
           ))}

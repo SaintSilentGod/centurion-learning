@@ -17,6 +17,13 @@ enum ClientStatus {
   ARCHIVED
 }
 
+enum TransportType {
+  ROAD
+  RAIL
+  AVIATION
+  MARITIME
+}
+
 /// Учётная запись (админ или клиент). Логин общий для входа.
 model User {
   id                String   @id @default(cuid())
@@ -43,6 +50,10 @@ model ClientProfile {
   patronymic  String
   dateOfBirth DateTime     @db.Date
   status      ClientStatus @default(ACTIVE)
+  /// Вид транспорта для программы обучения
+  transportType TransportType @default(ROAD)
+  /// Включить систему прокторинга для финального теста
+  finalTestProctoringEnabled Boolean @default(false)
   createdById String?
   createdBy   User?        @relation("CreatedByAdmin", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime     @default(now())
@@ -94,16 +105,17 @@ model TopicModule {
 }
 
 model ModuleMaterial {
-  id        String     @id @default(cuid())
-  moduleId  String
-  module    TopicModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  title     String
-  content   String     @db.Text
-  order     Int        @default(0)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id            String        @id @default(cuid())
+  moduleId      String
+  module        TopicModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  transportType TransportType @default(ROAD)
+  title         String
+  content       String        @db.Text
+  order         Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  @@unique([moduleId, order])
+  @@unique([moduleId, transportType, order])
 }
 
 /// Тест к модулю (начиная со 2 модуля; для 1 модуля тест отсутствует).
