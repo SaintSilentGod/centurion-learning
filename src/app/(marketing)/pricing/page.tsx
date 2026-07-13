@@ -17,10 +17,8 @@ export default function PricingPage() {
         </p>
       </section>
 
-      <section id="tb" className="mkt-container" style={{ padding: "32px 32px" }}>
-        <h2 className="mkt-heading" style={{ fontSize: 22, marginBottom: 20 }}>
-          Транспортная безопасность
-        </h2>
+      <section id="tb" className="mkt-container mkt-pricing-section">
+        <h2 className="mkt-heading mkt-pricing-section-title">Транспортная безопасность</h2>
         <div className="mkt-price-table">
           <div className="mkt-price-table-head is-tb">
             <div>Категория</div>
@@ -31,24 +29,31 @@ export default function PricingPage() {
           </div>
           {TB_PROGRAMS.map((program) => (
             <div key={program.code} className="mkt-price-table-row is-tb">
-              <div className="mkt-program-code">{program.code}</div>
-              <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4 }}>
-                {program.title}
+              <div className="mkt-price-col mkt-price-col-code">
+                <span className="mkt-program-code">{program.code}</span>
               </div>
-              <div style={{ fontSize: 14, color: "#6B7686" }}>{program.hours} ч</div>
-              <div style={{ fontSize: 15, fontWeight: 700 }}>{program.priceFull} ₽</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#1D4ED8" }}>
-                {program.priceDist} ₽
+              <div className="mkt-price-col mkt-price-col-program">{program.title}</div>
+              <div className="mkt-price-row-metrics">
+                <div className="mkt-price-col mkt-price-col-hours">
+                  <span className="mkt-price-mobile-label">Часы</span>
+                  <span>{program.hours} ч</span>
+                </div>
+                <div className="mkt-price-col mkt-price-col-full">
+                  <span className="mkt-price-mobile-label">Очная</span>
+                  <span className="mkt-price-value">{program.priceFull} ₽</span>
+                </div>
+                <div className="mkt-price-col mkt-price-col-dist">
+                  <span className="mkt-price-mobile-label">Дистанц.</span>
+                  <span className="mkt-price-value is-dist">{program.priceDist} ₽</span>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section id="security" className="mkt-container" style={{ padding: "24px 32px 56px" }}>
-        <h2 className="mkt-heading" style={{ fontSize: 22, marginBottom: 20 }}>
-          Охранная деятельность
-        </h2>
+      <section id="security" className="mkt-container mkt-pricing-section is-security">
+        <h2 className="mkt-heading mkt-pricing-section-title">Охранная деятельность</h2>
         <div className="mkt-price-table">
           <div className="mkt-price-table-head is-security">
             <div>Программа</div>
@@ -57,12 +62,16 @@ export default function PricingPage() {
           </div>
           {SECURITY_PROGRAMS.map((program) => (
             <div key={program.title} className="mkt-price-table-row is-security">
-              <div style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.4 }}>
-                {program.title}
-              </div>
-              <div style={{ fontSize: 14, color: "#6B7686" }}>{program.hours} ч</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#C98A2E" }}>
-                {program.price} ₽
+              <div className="mkt-price-col mkt-price-col-program">{program.title}</div>
+              <div className="mkt-price-row-metrics">
+                <div className="mkt-price-col mkt-price-col-hours">
+                  <span className="mkt-price-mobile-label">Часы</span>
+                  <span>{program.hours} ч</span>
+                </div>
+                <div className="mkt-price-col mkt-price-col-price">
+                  <span className="mkt-price-mobile-label">Стоимость</span>
+                  <span className="mkt-price-value is-gold">{program.price} ₽</span>
+                </div>
               </div>
             </div>
           ))}

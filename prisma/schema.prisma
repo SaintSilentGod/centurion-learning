@@ -314,3 +314,18 @@ model AuthSession {
   @@index([token])
   @@index([userId])
 }
+
+/// Заявка с публичного сайта (форма «Оставить заявку»).
+model SiteApplication {
+  id        String    @id @default(cuid())
+  name      String
+  phone     String
+  program   String?
+  comment   String?   @db.Text
+  source    String    @default("home")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([readAt])
+}

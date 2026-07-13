@@ -985,6 +985,52 @@
   overflow: hidden;
 }
 
+.mkt-pricing-section {
+  padding: 32px;
+}
+
+.mkt-pricing-section.is-security {
+  padding-top: 24px;
+  padding-bottom: 56px;
+}
+
+.mkt-pricing-section-title {
+  font-size: 22px;
+  margin: 0 0 20px;
+}
+
+.mkt-price-mobile-label {
+  display: none;
+}
+
+.mkt-price-col {
+  min-width: 0;
+}
+
+.mkt-price-col-program {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.mkt-price-col-hours {
+  font-size: 14px;
+  color: var(--mkt-gray);
+}
+
+.mkt-price-value {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.mkt-price-value.is-dist {
+  color: var(--mkt-blue);
+}
+
+.mkt-price-value.is-gold {
+  color: var(--mkt-gold);
+}
+
 .mkt-price-table-head {
   display: grid;
   gap: 16px;
@@ -1019,8 +1065,16 @@
   grid-template-columns: 90px 1fr 130px 130px 150px;
 }
 
+.mkt-price-table-row.is-tb .mkt-price-row-metrics {
+  display: contents;
+}
+
 .mkt-price-table-row.is-security {
   grid-template-columns: 1fr 130px 150px;
+}
+
+.mkt-price-table-row.is-security .mkt-price-row-metrics {
+  display: contents;
 }
 
 .mkt-price-table-row:hover {
@@ -1073,23 +1127,19 @@
   flex-shrink: 0;
 }
 
-.mkt-map-placeholder {
-  background: repeating-linear-gradient(
-    135deg,
-    var(--mkt-section-bg),
-    var(--mkt-section-bg) 10px,
-    #e5eaf2 10px,
-    #e5eaf2 20px
-  );
+.mkt-map-embed {
   border: 1px solid var(--mkt-border);
   border-radius: 18px;
-  height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--mkt-gray);
-  font-size: 13px;
-  font-family: monospace;
+  overflow: hidden;
+  height: 400px;
+  background: var(--mkt-section-bg);
+}
+
+.mkt-map-embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
 }
 
 .mkt-reveal {
@@ -1120,14 +1170,85 @@
     grid-template-columns: 1fr;
   }
 
-  .mkt-program-details.is-tb summary,
-  .mkt-price-table-head.is-tb,
-  .mkt-price-table-row.is-tb {
+  .mkt-program-details.is-tb summary {
     grid-template-columns: 1fr;
   }
 
   .mkt-program-body.is-tb {
     padding-left: 24px;
+  }
+
+  .mkt-price-table {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mkt-price-table-head {
+    display: none;
+  }
+
+  .mkt-price-table-row {
+    background: #fff;
+    border: 1px solid var(--mkt-border);
+    border-radius: 16px;
+    padding: 16px;
+    gap: 12px;
+    border-top: none;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mkt-price-table-row.is-tb .mkt-price-row-metrics,
+  .mkt-price-table-row.is-security .mkt-price-row-metrics {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mkt-price-table-row.is-tb .mkt-price-row-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mkt-price-table-row.is-security .mkt-price-row-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mkt-price-mobile-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--mkt-gray);
+    margin-bottom: 4px;
+  }
+
+  .mkt-price-table-row.is-tb .mkt-price-col-program,
+  .mkt-price-table-row.is-security .mkt-price-col-program {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+
+  .mkt-price-table-row .mkt-price-col-hours,
+  .mkt-price-table-row .mkt-price-col-full,
+  .mkt-price-table-row .mkt-price-col-dist,
+  .mkt-price-table-row .mkt-price-col-price {
+    display: flex;
+    flex-direction: column;
+    background: var(--mkt-bg);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .mkt-pricing-section {
+    padding-left: 20px;
+    padding-right: 20px;
   }
 }
 
@@ -1142,12 +1263,21 @@
   .mkt-about-grid,
   .mkt-documents-grid,
   .mkt-contacts-grid,
-  .mkt-note-box {
+  .mkt-note-box,
+  .mkt-pricing-section {
     padding-left: 20px;
     padding-right: 20px;
   }
 
   .mkt-nav {
     justify-content: flex-start;
+  }
+
+  .mkt-price-table-row.is-tb .mkt-price-row-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mkt-price-table-row.is-tb .mkt-price-col-hours {
+    grid-column: 1 / -1;
   }
 }

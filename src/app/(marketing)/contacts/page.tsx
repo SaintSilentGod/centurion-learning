@@ -53,7 +53,14 @@ export default function ContactsPage() {
               <div style={{ color: "#4B5567", fontSize: 15 }}>Пн – Пт, 09:00 – 16:00</div>
             </div>
           </div>
-          <div className="mkt-map-placeholder">[ карта проезда — добавьте embed-карту ]</div>
+          <div className="mkt-map-embed">
+            <iframe
+              src="https://yandex.ru/map-widget/v1/?um=constructor%3A55d38747f4bb0b44d240ff90e63c71c37ccac4822d918719ffdb23889b2de9ea&source=constructor"
+              title="Карта проезда — ЧОУ «Профессионал», Курган"
+              loading="lazy"
+              allowFullScreen
+            />
+          </div>
         </div>
 
         <ApplicationForm variant="full" title="Оставить заявку" />

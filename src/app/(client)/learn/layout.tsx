@@ -4,6 +4,7 @@ import { APP_NAME } from "@/constants/ru";
 import { requireClient } from "@/lib/auth/session";
 import { formatFioFromProfile } from "@/lib/format-name";
 import { prisma } from "@/lib/prisma";
+import "./learn-shell.css";
 
 export default async function LearnLayout({
   children,
@@ -18,8 +19,8 @@ export default async function LearnLayout({
     : null;
 
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="learn-shell">
+      <header className="learn-shell-header">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4">
           <div>
             <p className="text-sm text-slate-500">{APP_NAME}</p>
@@ -39,7 +40,9 @@ export default async function LearnLayout({
           </div>
         </div>
       </header>
-      <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">{children}</div>
+      <div className="learn-shell-main mx-auto w-full max-w-3xl flex-1 px-6 py-8">
+        {children}
+      </div>
     </div>
   );
 }

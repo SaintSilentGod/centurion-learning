@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { APP_NAME } from "@/constants/ru";
+import { getUnreadApplicationsCountAction } from "@/actions/admin/applications";
 import { requireAdmin } from "@/lib/auth/session";
 
 export default async function AdminLayout({
@@ -9,6 +10,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   await requireAdmin();
+  const unreadApplications = await getUnreadApplicationsCountAction();
 
   return (
     <div className="flex min-h-full flex-col">
@@ -24,6 +26,17 @@ export default async function AdminLayout({
               className="text-base text-blue-700 hover:underline"
             >
               Клиенты
+            </Link>
+            <Link
+              href="/admin/applications"
+              className="inline-flex items-center gap-2 text-base text-blue-700 hover:underline"
+            >
+              Заявки
+              {unreadApplications > 0 ? (
+                <span className="rounded-full bg-blue-700 px-2 py-0.5 text-xs font-semibold text-white">
+                  {unreadApplications}
+                </span>
+              ) : null}
             </Link>
             <LogoutButton />
           </div>
