@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { createSeedPrismaClient } from "../src/lib/prisma";
@@ -413,6 +414,131 @@ function getTheoryTxtPathForCategoryOrder(order: number) {
   return path.join(dir, `tb${order}.txt`);
 }
 
+type TheoryTransportType = "ROAD" | "AVIATION" | "RAIL";
+
+const THEORY_DOCX_NAMES: Record<
+  Exclude<TheoryTransportType, "ROAD">,
+  Record<number, string[]>
+> = {
+  AVIATION: {
+    1: ["ТБ-1 — копия (1).docx", "ТБ-1 — копия.docx"],
+    2: ["ТБ-2 — копия (1).docx", "ТБ-2 — копия.docx"],
+    3: ["ТБ-3 — копия (1).docx", "ТБ-3 — копия.docx"],
+    4: ["ТБ-4 — копия (1).docx", "ТБ-4 — копия.docx"],
+    5: ["ТБ-5 — копия (1).docx", "ТБ-5 — копия.docx"],
+    6: ["ТБ-6 — копия (1).docx", "ТБ-6 — копия.docx"],
+    7: ["ТБ-7 — копия (1).docx", "ТБ-7 — копия.docx"],
+    8: ["ТБ-8 -- к (1).docx", "ТБ-8 -- к.docx"],
+  },
+  RAIL: {
+    1: ["ТБ-1 — копия (2).docx"],
+    2: ["ТБ-2 — копия (2).docx"],
+    3: ["ТБ-3 — копия (2).docx"],
+    4: ["ТБ-4 — копия (2).docx"],
+    5: ["ТБ-5 — копия (2).docx"],
+    6: ["ТБ-6 — копия (2).docx"],
+    7: ["ТБ-7 — копия (2).docx"],
+    8: ["ТБ-8 -- к (2).docx"],
+  },
+};
+
+function getTheorySourceDir(transport: TheoryTransportType) {
+  if (transport === "AVIATION") {
+    return (
+      process.env.THEORY_AVIATION_TXT_DIR ??
+      process.env.THEORY_TXT_DIR ??
+      path.join(process.env.HOME ?? "", "Downloads")
+    );
+  }
+  if (transport === "RAIL") {
+    return (
+      process.env.THEORY_RAIL_TXT_DIR ??
+      process.env.THEORY_TXT_DIR ??
+      path.join(process.env.HOME ?? "", "Downloads")
+    );
+  }
+  return (
+    process.env.THEORY_TXT_DIR ?? path.join(process.env.HOME ?? "", "Downloads")
+  );
+}
+
+function getTheoryCachePath(transport: TheoryTransportType, order: number) {
+  const dir = getTheorySourceDir(transport);
+  if (transport === "ROAD") {
+    return path.join(dir, `tb${order}.txt`);
+  }
+  return path.join(dir, `tb_${transport.toLowerCase()}${order}.txt`);
+}
+
+function convertDocxToUtf8(docxPath: string): string {
+  if (process.platform === "darwin") {
+    return execSync(`textutil -convert txt -stdout ${JSON.stringify(docxPath)}`, {
+      encoding: "utf8",
+      maxBuffer: 32 * 1024 * 1024,
+    });
+  }
+
+  throw new Error(
+    "Конвертация docx доступна только на macOS (textutil). Подготовьте tb_*.txt вручную.",
+  );
+}
+
+function resolveTheoryRaw(
+  transport: TheoryTransportType,
+  categoryOrder: number,
+): string | null {
+  const cachePath = getTheoryCachePath(transport, categoryOrder);
+
+  if (transport === "ROAD") {
+    return fs.existsSync(cachePath) ? fs.readFileSync(cachePath, "utf8") : null;
+  }
+
+  const dir = getTheorySourceDir(transport);
+  const docxCandidates = THEORY_DOCX_NAMES[transport][categoryOrder] ?? [];
+  const docxPath = docxCandidates
+    .map((name) => path.join(dir, name))
+    .find((candidate) => fs.existsSync(candidate));
+
+  if (docxPath) {
+    const docxMtime = fs.statSync(docxPath).mtimeMs;
+    if (fs.existsSync(cachePath)) {
+      const cacheMtime = fs.statSync(cachePath).mtimeMs;
+      if (cacheMtime >= docxMtime) {
+        return fs.readFileSync(cachePath, "utf8");
+      }
+    }
+
+    const raw = convertDocxToUtf8(docxPath);
+    fs.writeFileSync(cachePath, raw, "utf8");
+    return raw;
+  }
+
+  if (fs.existsSync(cachePath)) {
+    return fs.readFileSync(cachePath, "utf8");
+  }
+
+  return null;
+}
+
+function countTheoryModules(
+  transport: TheoryTransportType,
+  categoryOrder: number,
+) {
+  const raw = resolveTheoryRaw(transport, categoryOrder);
+  if (!raw) {
+    return { count: 0, orders: [] as number[], module11Sections: 0 };
+  }
+
+  const modules = parseTheoryModulesFromTxt(raw);
+  const module11 = modules.find((module) => module.order === 11);
+
+  return {
+    count: modules.length,
+    orders: modules.map((module) => module.order),
+    module11Sections: module11?.sections.length ?? 0,
+  };
+}
+
 type ParsedTheoryModule = {
   order: number;
   title: string;
@@ -425,7 +551,8 @@ function parseTheoryModulesFromTxt(raw: string): ParsedTheoryModule[] {
   const modules: ParsedTheoryModule[] = [];
 
   const moduleHeaderRe = /^Модул[ью]\s*(\d+)\.\s*(.+)$/i;
-  const subtopicRe = /^Тема\s+(\d+(?:\.\d+)?)\.\s*(.*)$/i;
+  const moduleThemeRe = /^Тема\s+(\d+)\.\s+(.+)$/i;
+  const subtopicRe = /^Тема\s+(\d+\.\d+)\.\s*(.*)$/i;
 
   let current: ParsedTheoryModule | null = null;
   let currentSection: ParsedTheoryModule["sections"][number] | null = null;
@@ -466,6 +593,18 @@ function parseTheoryModulesFromTxt(raw: string): ParsedTheoryModule[] {
       continue;
     }
 
+    const themeModMatch = line.match(moduleThemeRe);
+    if (themeModMatch) {
+      flushModule();
+      current = {
+        order: Number(themeModMatch[1]),
+        title: themeModMatch[2].trim(),
+        sections: [],
+      };
+      sectionOrder = 0;
+      continue;
+    }
+
     if (!current) continue;
 
     const subMatch = line.match(subtopicRe);
@@ -499,13 +638,15 @@ function parseTheoryModulesFromTxt(raw: string): ParsedTheoryModule[] {
   return modules.sort((a, b) => a.order - b.order);
 }
 
-async function seedRoadTheoryForTopic(topicId: string, categoryOrder: number) {
-  const theoryPath = getTheoryTxtPathForCategoryOrder(categoryOrder);
-  if (!fs.existsSync(theoryPath)) return;
+async function seedTheoryForTopic(
+  topicId: string,
+  transportType: TheoryTransportType,
+  categoryOrder: number,
+) {
+  const raw = resolveTheoryRaw(transportType, categoryOrder);
+  if (!raw) return 0;
 
-  const theoryModules = parseTheoryModulesFromTxt(
-    fs.readFileSync(theoryPath, "utf8"),
-  );
+  const theoryModules = parseTheoryModulesFromTxt(raw);
 
   for (const theory of theoryModules) {
     const mod = await prisma.topicModule.upsert({
@@ -521,14 +662,14 @@ async function seedRoadTheoryForTopic(topicId: string, categoryOrder: number) {
     });
 
     await prisma.moduleMaterial.deleteMany({
-      where: { moduleId: mod.id, transportType: "ROAD" },
+      where: { moduleId: mod.id, transportType },
     });
 
     for (const section of theory.sections) {
       await prisma.moduleMaterial.create({
         data: {
           moduleId: mod.id,
-          transportType: "ROAD",
+          transportType,
           order: section.order,
           title: section.title,
           content: section.content.trim(),
@@ -536,6 +677,8 @@ async function seedRoadTheoryForTopic(topicId: string, categoryOrder: number) {
       });
     }
   }
+
+  return theoryModules.length;
 }
 
 async function main() {
@@ -705,7 +848,29 @@ async function main() {
       }
     }
 
-    await seedRoadTheoryForTopic(topic.id, topicData.order);
+    await seedTheoryForTopic(topic.id, "ROAD", topicData.order);
+    await seedTheoryForTopic(topic.id, "AVIATION", topicData.order);
+    await seedTheoryForTopic(topic.id, "RAIL", topicData.order);
+  }
+
+  console.log("\nСравнение модулей теории: дорога / авиа / жд");
+  for (let order = 1; order <= 8; order += 1) {
+    const road = countTheoryModules("ROAD", order);
+    const aviation = countTheoryModules("AVIATION", order);
+    const rail = countTheoryModules("RAIL", order);
+
+    console.log(
+      `  Категория ${order}: дорога ${road.count}, авиа ${aviation.count}, жд ${rail.count}`,
+    );
+
+    if (order === 2) {
+      console.log(
+        `    авиа модуль 11: ${aviation.module11Sections} подтем(ы); жд модуль 11: ${rail.module11Sections} подтем(ы)`,
+      );
+      console.log(`    дорога: [${road.orders.join(", ")}]`);
+      console.log(`    авиа:   [${aviation.orders.join(", ")}]`);
+      console.log(`    жд:     [${rail.orders.join(", ")}]`);
+    }
   }
 
   console.log("Seed завершён.");

@@ -79,9 +79,9 @@
 }
 
 .mkt-logo-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: var(--mkt-blue-dark);
   display: flex;
   align-items: center;
@@ -89,21 +89,24 @@
   font-family: var(--font-manrope), system-ui, sans-serif;
   font-weight: 800;
   color: #fff;
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
 .mkt-logo-title {
   font-family: var(--font-manrope), system-ui, sans-serif;
   font-weight: 800;
-  font-size: 15px;
-  color: var(--mkt-text);
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--mkt-navy);
   white-space: nowrap;
 }
 
 .mkt-logo-subtitle {
-  font-size: 11px;
-  color: var(--mkt-gray);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--mkt-blue-dark);
   white-space: nowrap;
 }
 
