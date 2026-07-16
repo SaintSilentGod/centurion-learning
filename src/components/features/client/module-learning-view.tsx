@@ -189,8 +189,7 @@ export function ModuleLearningView({
   test,
   bestAttempt,
   latestAttempt,
-  completedTheoryTimeSec,
-  activeSessionStartedAt,
+  theoryTimeSec,
   scorePct,
   passed,
   showReview = false,
@@ -205,18 +204,13 @@ export function ModuleLearningView({
   test: Test;
   bestAttempt: BestAttempt;
   latestAttempt: LatestAttempt;
-  completedTheoryTimeSec: number;
-  activeSessionStartedAt: string | null;
-  theoryTimeSec?: number;
+  theoryTimeSec: number;
   scorePct?: string;
   passed?: string;
   showReview?: boolean;
 }) {
   const hasTest = moduleOrder > 1 && Boolean(test);
-  const liveTheoryTimeSec = useLiveTheoryTime(
-    completedTheoryTimeSec,
-    activeSessionStartedAt,
-  );
+  const liveTheoryTimeSec = useLiveTheoryTime(theoryTimeSec);
   const theoryReady = liveTheoryTimeSec >= MODULE_THEORY_REQUIRED_SEC;
 
   const [activeTab, setActiveTab] = useState<ViewTab>(
@@ -359,12 +353,12 @@ export function ModuleLearningView({
       {theoryUnlocked && activeTab === "theory" ? (
         <ModuleTheoryCourse
           moduleId={moduleId}
+          sessionId={sessionId}
           categoryOrder={categoryOrder}
           moduleOrder={moduleOrder}
           moduleTitle={moduleTitle}
           materials={materials}
-          completedTheoryTimeSec={completedTheoryTimeSec}
-          activeSessionStartedAt={activeSessionStartedAt}
+          completedTheoryTimeSec={theoryTimeSec}
         />
       ) : null}
 

@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { MODULE_THEORY_REQUIRED_SEC } from "@/lib/transport";
-import { sessionDurationSec, totalTopicTimeSec, computeModuleTheoryTimeSec } from "@/lib/time-tracking";
+import { MODULE_THEORY_REQUIRED_SEC, HEARTBEAT_INTERVAL_SEC } from "@/lib/transport";
+import { sessionDurationSec, totalTopicTimeSec } from "@/lib/time-tracking";
 
 export async function getClientLearningData() {
   const user = await requireClient();
@@ -217,7 +217,7 @@ export async function getClassificationModules(topicId: string) {
   const module1Sessions = module1
     ? await prisma.moduleSession.findMany({ where: { clientId: user.clientProfileId, moduleId: module1.id } })
     : [];
-  const module1Passed = computeModuleTheoryTimeSec(module1Sessions) >= MODULE_THEORY_REQUIRED_SEC;
+  const module1Passed = totalTopicTimeSec(module1Sessions) >= MODULE_THEORY_REQUIRED_SEC;
 
   const passedMap = new Map<string, boolean>();
   for (const m of assignment.topic.modules) {
@@ -284,8 +284,7 @@ export async function getModuleData(moduleId: string) {
   const moduleSessions = await prisma.moduleSession.findMany({
     where: { clientId: user.clientProfileId, moduleId },
   });
-  const completedTheoryTimeSec = totalTopicTimeSec(moduleSessions);
-  const theoryTimeSec = computeModuleTheoryTimeSec(moduleSessions);
+  const theoryTimeSec = totalTopicTimeSec(moduleSessions);
 
   const passedByModuleId = new Set<string>();
   for (const a of assignment.client.moduleTestAttempts) {
@@ -304,7 +303,7 @@ export async function getModuleData(moduleId: string) {
       const prevSessions = await prisma.moduleSession.findMany({
         where: { clientId: user.clientProfileId, moduleId: prev.id },
       });
-      unlocked = computeModuleTheoryTimeSec(prevSessions) >= MODULE_THEORY_REQUIRED_SEC;
+      unlocked = totalTopicTimeSec(prevSessions) >= MODULE_THEORY_REQUIRED_SEC;
     } else {
       unlocked = passedByModuleId.has(prev.id);
     }
@@ -394,8 +393,6 @@ export async function getModuleData(moduleId: string) {
     bestAttempt,
     latestAttempt,
     theoryTimeSec,
-    completedTheoryTimeSec,
-    activeSessionStartedAt: session.startedAt.toISOString(),
   };
 }
 
@@ -408,14 +405,29 @@ export async function endModuleSessionAction(sessionId: string) {
   });
   if (!session) redirect("/learn");
 
-  const endedAt = new Date();
+  // durationSec is already accumulated via heartbeats — just close the session
   await prisma.moduleSession.update({
     where: { id: session.id },
-    data: { endedAt, durationSec: sessionDurationSec(session.startedAt, endedAt) },
+    data: { endedAt: new Date() },
   });
 
   revalidatePath("/learn");
   redirect("/learn");
+}
+
+export async function heartbeatModuleSessionAction(sessionId: string): Promise<void> {
+  const user = await requireClient();
+  if (!user.clientProfileId) throw new Error("Профиль клиента не найден");
+
+  const session = await prisma.moduleSession.findFirst({
+    where: { id: sessionId, clientId: user.clientProfileId, endedAt: null },
+  });
+  if (!session) return;
+
+  await prisma.moduleSession.update({
+    where: { id: session.id },
+    data: { durationSec: (session.durationSec ?? 0) + HEARTBEAT_INTERVAL_SEC },
+  });
 }
 
 export async function submitModuleTestAction(
@@ -439,7 +451,7 @@ export async function submitModuleTestAction(
   const moduleSessions = await prisma.moduleSession.findMany({
     where: { clientId: user.clientProfileId, moduleId },
   });
-  if (computeModuleTheoryTimeSec(moduleSessions) < MODULE_THEORY_REQUIRED_SEC) {
+  if (totalTopicTimeSec(moduleSessions) < MODULE_THEORY_REQUIRED_SEC) {
     return { error: "Для доступа к тесту необходимо изучить теорию не менее 2 часов" };
   }
 

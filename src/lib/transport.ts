@@ -17,3 +17,6 @@ export function transportTypeLabel(value: string): string {
 
 /** Минимальное время на теорию модуля (секунды) перед доступом к тесту */
 export const MODULE_THEORY_REQUIRED_SEC = 2 * 60 * 60;
+
+/** Интервал heartbeat (секунды) — клиент шлёт пинг пока вкладка открыта */
+export const HEARTBEAT_INTERVAL_SEC = 30;

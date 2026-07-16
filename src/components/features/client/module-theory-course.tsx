@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { heartbeatModuleSessionAction } from "@/actions/client/learning";
 import { useLiveTheoryTime } from "@/hooks/use-live-theory-time";
 import { TheoryContent } from "@/lib/theory-content";
-import { MODULE_THEORY_REQUIRED_SEC } from "@/lib/transport";
+import { MODULE_THEORY_REQUIRED_SEC, HEARTBEAT_INTERVAL_SEC } from "@/lib/transport";
 import { formatDurationLiveRu, formatDurationRu } from "@/lib/time-tracking";
 import "./module-theory-course.css";
 
@@ -31,21 +33,23 @@ function saveVisited(moduleId: string, ids: Set<string>) {
 
 export function ModuleTheoryCourse({
   moduleId,
+  sessionId,
   categoryOrder,
   moduleOrder,
   moduleTitle,
   materials,
   completedTheoryTimeSec,
-  activeSessionStartedAt,
 }: {
   moduleId: string;
+  sessionId: string;
   categoryOrder: number;
   moduleOrder: number;
   moduleTitle: string;
   materials: Material[];
   completedTheoryTimeSec: number;
-  activeSessionStartedAt: string | null;
 }) {
+  const router = useRouter();
+
   const sortedMaterials = useMemo(
     () => [...materials].sort((a, b) => a.order - b.order),
     [materials],
@@ -54,10 +58,17 @@ export function ModuleTheoryCourse({
   const [activeIndex, setActiveIndex] = useState(0);
   const [visited, setVisited] = useState<Set<string>>(() => new Set());
 
-  const liveTheoryTimeSec = useLiveTheoryTime(
-    completedTheoryTimeSec,
-    activeSessionStartedAt,
-  );
+  const liveTheoryTimeSec = useLiveTheoryTime(completedTheoryTimeSec);
+
+  // Heartbeat: каждые 30с пока вкладка видима — пишем время в БД и обновляем страницу
+  useEffect(() => {
+    const id = window.setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      await heartbeatModuleSessionAction(sessionId);
+      router.refresh();
+    }, HEARTBEAT_INTERVAL_SEC * 1000);
+    return () => window.clearInterval(id);
+  }, [sessionId, router]);
   const theoryReady = liveTheoryTimeSec >= MODULE_THEORY_REQUIRED_SEC;
   const activeMaterial = sortedMaterials[activeIndex] ?? null;
   const progressPct =

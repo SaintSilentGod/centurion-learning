@@ -15,15 +15,7 @@ export default async function ModulePage({
   if (!data) notFound();
   if (data.locked) redirect("/learn");
 
-  const {
-    module,
-    sessionId,
-    bestAttempt,
-    latestAttempt,
-    theoryTimeSec,
-    completedTheoryTimeSec,
-    activeSessionStartedAt,
-  } = data;
+  const { module, sessionId, bestAttempt, latestAttempt, theoryTimeSec } = data;
   if (!module || !sessionId) notFound();
 
   return (
@@ -39,8 +31,6 @@ export default async function ModulePage({
       bestAttempt={bestAttempt}
       latestAttempt={latestAttempt}
       theoryTimeSec={theoryTimeSec}
-      completedTheoryTimeSec={completedTheoryTimeSec}
-      activeSessionStartedAt={activeSessionStartedAt}
       scorePct={sp.scorePct}
       passed={sp.passed}
       showReview={sp.review === "1"}
