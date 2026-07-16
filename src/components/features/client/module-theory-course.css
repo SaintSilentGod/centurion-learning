@@ -1,0 +1,388 @@
+.theory-course {
+  --theory-accent: #3b82f6;
+  --theory-accent-dark: #1d4ed8;
+  --theory-sidebar-bg: #f3f4f6;
+  --theory-border: #e5e7eb;
+  --theory-text: #1f2937;
+  --theory-muted: #6b7280;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 16px;
+  border: 1px solid var(--theory-border);
+  background: #fff;
+  box-shadow:
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    0 8px 24px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.theory-course-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--theory-border);
+  background: #fff;
+}
+
+.theory-course-top-meta {
+  min-width: 0;
+}
+
+.theory-course-module-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--theory-muted);
+}
+
+.theory-course-module-title {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--theory-text);
+}
+
+.theory-course-timer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.theory-course-timer-label {
+  font-size: 12px;
+  color: var(--theory-muted);
+}
+
+.theory-course-timer-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--theory-text);
+  white-space: nowrap;
+}
+
+.theory-course-timer-value.is-ready {
+  color: #047857;
+}
+
+.theory-course-progress-track {
+  height: 4px;
+  background: #e5e7eb;
+}
+
+.theory-course-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--theory-accent-dark), var(--theory-accent));
+  transition: width 0.25s ease;
+}
+
+.theory-course-body {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: 520px;
+}
+
+.theory-course-sidebar {
+  border-right: 1px solid var(--theory-border);
+  background: var(--theory-sidebar-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.theory-course-sidebar-head {
+  padding: 14px 16px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theory-muted);
+}
+
+.theory-course-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.theory-course-nav-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.theory-course-nav-item:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.theory-course-nav-item.is-active {
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  border-left: 3px solid var(--theory-accent-dark);
+  padding-left: 9px;
+}
+
+.theory-course-nav-index {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--theory-muted);
+  background: #e5e7eb;
+}
+
+.theory-course-nav-item.is-active .theory-course-nav-index {
+  background: var(--theory-accent);
+  color: #1f2937;
+}
+
+.theory-course-nav-item.is-visited .theory-course-nav-index {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.theory-course-nav-title {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--theory-text);
+}
+
+.theory-course-nav-item.is-active .theory-course-nav-title {
+  font-weight: 600;
+}
+
+.theory-course-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #fff;
+}
+
+.theory-course-mobile-picker {
+  display: none;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--theory-border);
+  background: var(--theory-sidebar-bg);
+}
+
+.theory-course-mobile-picker select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--theory-border);
+  background: #fff;
+  font-size: 14px;
+  color: var(--theory-text);
+}
+
+.theory-course-content-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px 24px;
+}
+
+.theory-course-section-title {
+  margin: 0 0 20px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--theory-text);
+}
+
+.theory-course-content {
+  font-size: 17px;
+  line-height: 1.75;
+  color: #374151;
+}
+
+.theory-course-paragraph {
+  margin: 0 0 1em;
+}
+
+.theory-course-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.theory-course-subheading {
+  margin: 1.4em 0 0.55em;
+  font-size: 1.05em;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--theory-text);
+}
+
+.theory-course-subheading:first-child {
+  margin-top: 0;
+}
+
+.theory-course-list {
+  margin: 0 0 1.1em;
+  padding-left: 1.35rem;
+  list-style: disc;
+}
+
+.theory-course-list li {
+  margin-bottom: 0.5em;
+}
+
+.theory-course-list li:last-child {
+  margin-bottom: 0;
+}
+
+.theory-course-qa {
+  margin: 0 0 1.15em;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+}
+
+.theory-course-qa-question {
+  margin: 0;
+  color: var(--theory-text);
+}
+
+.theory-course-qa-answer {
+  margin: 10px 0 0;
+  color: #1e3a8a;
+}
+
+.theory-course-qa-answer span {
+  font-weight: 700;
+}
+
+.theory-course-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--theory-border);
+  background: #fafafa;
+}
+
+.theory-course-footer-meta {
+  font-size: 14px;
+  color: var(--theory-muted);
+}
+
+.theory-course-footer-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.theory-course-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.theory-course-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.theory-course-btn-secondary {
+  background: #fff;
+  color: var(--theory-text);
+  border: 1px solid var(--theory-border);
+}
+
+.theory-course-btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.theory-course-btn-primary {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.theory-course-btn-primary:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.theory-course-empty {
+  padding: 48px 32px;
+  text-align: center;
+  color: var(--theory-muted);
+  font-size: 16px;
+}
+
+@media (max-width: 900px) {
+  .theory-course-body {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .theory-course-sidebar {
+    display: none;
+  }
+
+  .theory-course-mobile-picker {
+    display: block;
+  }
+
+  .theory-course-content-wrap {
+    padding: 20px 16px 16px;
+  }
+
+  .theory-course-section-title {
+    font-size: 20px;
+  }
+
+  .theory-course-content {
+    font-size: 16px;
+  }
+
+  .theory-course-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .theory-course-footer-actions {
+    width: 100%;
+  }
+
+  .theory-course-btn {
+    flex: 1;
+  }
+
+  .theory-course-timer {
+    align-items: flex-start;
+  }
+}

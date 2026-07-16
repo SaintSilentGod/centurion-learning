@@ -21,7 +21,7 @@ export default async function LearnLayout({
   return (
     <div className="learn-shell">
       <header className="learn-shell-header">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <div>
             <p className="text-sm text-slate-500">{APP_NAME}</p>
             <h1 className="text-xl font-semibold">Моё обучение</h1>
@@ -40,7 +40,7 @@ export default async function LearnLayout({
           </div>
         </div>
       </header>
-      <div className="learn-shell-main mx-auto w-full max-w-3xl flex-1 px-6 py-8">
+      <div className="learn-shell-main mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         {children}
       </div>
     </div>

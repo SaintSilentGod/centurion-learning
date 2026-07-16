@@ -7,7 +7,7 @@ export default async function ModulePage({
   searchParams,
 }: {
   params: Promise<{ moduleId: string }>;
-  searchParams?: Promise<{ scorePct?: string; passed?: string }>;
+  searchParams?: Promise<{ scorePct?: string; passed?: string; review?: string }>;
 }) {
   const { moduleId } = await params;
   const sp = (await searchParams) ?? {};
@@ -15,7 +15,15 @@ export default async function ModulePage({
   if (!data) notFound();
   if (data.locked) redirect("/learn");
 
-  const { module, sessionId, bestAttempt, theoryTimeSec } = data;
+  const {
+    module,
+    sessionId,
+    bestAttempt,
+    latestAttempt,
+    theoryTimeSec,
+    completedTheoryTimeSec,
+    activeSessionStartedAt,
+  } = data;
   if (!module || !sessionId) notFound();
 
   return (
@@ -29,9 +37,13 @@ export default async function ModulePage({
       materials={module.materials}
       test={module.test}
       bestAttempt={bestAttempt}
+      latestAttempt={latestAttempt}
       theoryTimeSec={theoryTimeSec}
+      completedTheoryTimeSec={completedTheoryTimeSec}
+      activeSessionStartedAt={activeSessionStartedAt}
       scorePct={sp.scorePct}
       passed={sp.passed}
+      showReview={sp.review === "1"}
     />
   );
 }

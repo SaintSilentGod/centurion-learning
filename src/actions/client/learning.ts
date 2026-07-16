@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { MODULE_THEORY_REQUIRED_SEC } from "@/lib/transport";
-import { sessionDurationSec, totalTopicTimeSec } from "@/lib/time-tracking";
+import { sessionDurationSec, totalTopicTimeSec, computeModuleTheoryTimeSec } from "@/lib/time-tracking";
 
 export async function getClientLearningData() {
   const user = await requireClient();
@@ -217,7 +217,7 @@ export async function getClassificationModules(topicId: string) {
   const module1Sessions = module1
     ? await prisma.moduleSession.findMany({ where: { clientId: user.clientProfileId, moduleId: module1.id } })
     : [];
-  const module1Passed = totalTopicTimeSec(module1Sessions) >= MODULE_THEORY_REQUIRED_SEC;
+  const module1Passed = computeModuleTheoryTimeSec(module1Sessions) >= MODULE_THEORY_REQUIRED_SEC;
 
   const passedMap = new Map<string, boolean>();
   for (const m of assignment.topic.modules) {
@@ -284,7 +284,8 @@ export async function getModuleData(moduleId: string) {
   const moduleSessions = await prisma.moduleSession.findMany({
     where: { clientId: user.clientProfileId, moduleId },
   });
-  const theoryTimeSec = totalTopicTimeSec(moduleSessions);
+  const completedTheoryTimeSec = totalTopicTimeSec(moduleSessions);
+  const theoryTimeSec = computeModuleTheoryTimeSec(moduleSessions);
 
   const passedByModuleId = new Set<string>();
   for (const a of assignment.client.moduleTestAttempts) {
@@ -303,7 +304,7 @@ export async function getModuleData(moduleId: string) {
       const prevSessions = await prisma.moduleSession.findMany({
         where: { clientId: user.clientProfileId, moduleId: prev.id },
       });
-      unlocked = totalTopicTimeSec(prevSessions) >= MODULE_THEORY_REQUIRED_SEC;
+      unlocked = computeModuleTheoryTimeSec(prevSessions) >= MODULE_THEORY_REQUIRED_SEC;
     } else {
       unlocked = passedByModuleId.has(prev.id);
     }
@@ -330,12 +331,71 @@ export async function getModuleData(moduleId: string) {
       })
     : null;
 
+  const latestAttemptRaw = topicModule.test
+    ? await prisma.moduleTestAttempt.findFirst({
+        where: {
+          clientId: user.clientProfileId,
+          testId: topicModule.test.id,
+          completedAt: { not: null },
+        },
+        orderBy: { completedAt: "desc" },
+        include: { answers: true },
+      })
+    : null;
+
+  const correctOptionByQuestionId = new Map<string, string>();
+  if (topicModule.test) {
+    for (const question of topicModule.test.questions) {
+      const correct = question.options.find((option) => option.isCorrect);
+      if (correct) correctOptionByQuestionId.set(question.id, correct.id);
+    }
+  }
+
+  const latestAttempt = latestAttemptRaw
+    ? {
+        id: latestAttemptRaw.id,
+        scorePct: latestAttemptRaw.scorePct,
+        passed: latestAttemptRaw.passed,
+        completedAt: latestAttemptRaw.completedAt,
+        answers: latestAttemptRaw.answers.map((answer) => {
+          const correctOptionId = correctOptionByQuestionId.get(answer.questionId) ?? null;
+          return {
+            questionId: answer.questionId,
+            selectedOptionId: answer.optionId,
+            correctOptionId,
+            isCorrect:
+              correctOptionId != null && answer.optionId === correctOptionId,
+          };
+        }),
+      }
+    : null;
+
+  // Не отдаём isCorrect в форму теста — только в разборе попытки.
+  const safeTest = topicModule.test
+    ? {
+        ...topicModule.test,
+        questions: topicModule.test.questions.map((question) => ({
+          id: question.id,
+          order: question.order,
+          text: question.text,
+          options: question.options.map((option) => ({
+            id: option.id,
+            order: option.order,
+            text: option.text,
+          })),
+        })),
+      }
+    : null;
+
   return {
     locked: false as const,
-    module: { ...topicModule, materials },
+    module: { ...topicModule, materials, test: safeTest },
     sessionId: session.id,
     bestAttempt,
+    latestAttempt,
     theoryTimeSec,
+    completedTheoryTimeSec,
+    activeSessionStartedAt: session.startedAt.toISOString(),
   };
 }
 
@@ -379,7 +439,7 @@ export async function submitModuleTestAction(
   const moduleSessions = await prisma.moduleSession.findMany({
     where: { clientId: user.clientProfileId, moduleId },
   });
-  if (totalTopicTimeSec(moduleSessions) < MODULE_THEORY_REQUIRED_SEC) {
+  if (computeModuleTheoryTimeSec(moduleSessions) < MODULE_THEORY_REQUIRED_SEC) {
     return { error: "Для доступа к тесту необходимо изучить теорию не менее 2 часов" };
   }
 
@@ -433,5 +493,7 @@ export async function submitModuleTestAction(
 
   revalidatePath("/learn");
   revalidatePath(`/learn/module/${moduleId}`);
-  redirect(`/learn/module/${moduleId}?scorePct=${attempt.scorePct ?? 0}&passed=${attempt.passed ? "1" : "0"}`);
+  redirect(
+    `/learn/module/${moduleId}?scorePct=${attempt.scorePct ?? 0}&passed=${attempt.passed ? "1" : "0"}&review=1`,
+  );
 }
