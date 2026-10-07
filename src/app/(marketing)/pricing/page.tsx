@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { SECURITY_PROGRAMS, TB_PROGRAMS } from "@/lib/marketing/data";
+import { formatProgramPrice, SECURITY_PROGRAMS, TB_PROGRAMS } from "@/lib/marketing/data";
 
 export default function PricingPage() {
   return (
@@ -70,7 +70,7 @@ export default function PricingPage() {
                 </div>
                 <div className="mkt-price-col mkt-price-col-price">
                   <span className="mkt-price-mobile-label">Стоимость</span>
-                  <span className="mkt-price-value is-gold">{program.price} ₽</span>
+                  <span className="mkt-price-value is-gold">{formatProgramPrice(program.price)}</span>
                 </div>
               </div>
             </div>

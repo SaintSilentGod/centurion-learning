@@ -9,6 +9,7 @@ import { ProctoringToggle } from "@/components/features/admin/proctoring-toggle"
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatFioFromProfile } from "@/lib/format-name";
+import { programListTitle } from "@/lib/program";
 import { transportTypeLabel } from "@/lib/transport";
 import { formatDurationRu } from "@/lib/time-tracking";
 
@@ -49,7 +50,9 @@ export default async function ClientDetailsPage({
           </div>
           <div>
             <dt className="text-slate-500">Вид транспорта</dt>
-            <dd className="font-medium">{transportTypeLabel(client.transportType)}</dd>
+            <dd className="font-medium">
+              {client.transportType ? transportTypeLabel(client.transportType) : "Не требуется"}
+            </dd>
           </div>
           <div>
             <dt className="text-slate-500">Статус</dt>
@@ -87,27 +90,34 @@ export default async function ClientDetailsPage({
         </div>
       </Card>
 
-      <Card title="Прогресс по классификациям">
+      <Card title="Прогресс по программам">
         <ul className="divide-y divide-slate-200">
           {topicProgress.map((topic) => (
             <li key={topic.topicId} className="flex flex-col gap-2 py-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-lg font-medium">
-                  {topic.topicOrder}. {topic.topicTitle}
+                  {programListTitle({
+                    kind: topic.topicKind,
+                    order: topic.topicOrder,
+                    title: topic.topicTitle,
+                  })}
                 </p>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-sm">
                   Назначена
                 </span>
               </div>
               <div className="text-slate-700">
-                <p>Время: {formatDurationRu(topic.totalTimeSec)}</p>
-                {topic.hasOpenSession ? (
-                  <p className="text-amber-700">Сейчас изучает тему</p>
-                ) : null}
-                {topic.testPassed !== null ? (
-                  <p>Тест: {topic.testPassed ? "пройден" : "не пройден"}</p>
+                <p>Время на теории: {formatDurationRu(topic.totalTimeSec)}</p>
+                <p>
+                  Пройдено: {topic.passedModules} из {topic.moduleCount}
+                </p>
+                {topic.bestFinalPct !== null ? (
+                  <p>
+                    Итоговый тест: {topic.finalTestPassed ? "сдан" : "не сдан"}, лучший результат{" "}
+                    {topic.bestFinalPct}%
+                  </p>
                 ) : (
-                  <p className="text-slate-500">Тест: ещё не проходил</p>
+                  <p className="text-slate-500">Итоговый тест: ещё не проходил</p>
                 )}
               </div>
             </li>

@@ -20,10 +20,10 @@ export function TransportTypeSelector({
   return (
     <fieldset className="flex flex-col gap-3">
       <legend className="mb-1 text-base font-medium text-slate-800">
-        Вид транспорта <span className="text-red-600">*</span>
+        Вид транспорта
       </legend>
       <p className="text-sm text-slate-600">
-        Выберите один вид транспорта до назначения классификаций.
+        Обязателен, если назначаете хотя бы одну категорию ТБ.
       </p>
       <input type="hidden" name="transportType" value={value} required />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

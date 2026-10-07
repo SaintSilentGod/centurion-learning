@@ -24,6 +24,14 @@ enum TransportType {
   MARITIME
 }
 
+/// Направление программы: от него зависят вид транспорта и подписи в кабинете
+enum ProgramKind {
+  /// Транспортная безопасность, категории 1–8; теория своя для каждого вида транспорта
+  TRANSPORT_SECURITY
+  /// Охранная деятельность (ЧОО); теория общая, вид транспорта не нужен
+  PRIVATE_SECURITY
+}
+
 /// Учётная запись (админ или клиент). Логин общий для входа.
 model User {
   id                String   @id @default(cuid())
@@ -50,8 +58,8 @@ model ClientProfile {
   patronymic  String
   dateOfBirth DateTime     @db.Date
   status      ClientStatus @default(ACTIVE)
-  /// Вид транспорта для программы обучения
-  transportType TransportType @default(ROAD)
+  /// Вид транспорта для программ ТБ; null, если назначены только программы охранной деятельности
+  transportType TransportType? @default(ROAD)
   /// Включить систему прокторинга для финального теста
   finalTestProctoringEnabled Boolean @default(false)
   createdById String?
@@ -73,6 +81,7 @@ model ClientProfile {
 model Topic {
   id          String   @id @default(cuid())
   order       Int      @unique
+  kind        ProgramKind @default(TRANSPORT_SECURITY)
   title       String
   description String?
   createdAt   DateTime @default(now())
@@ -93,6 +102,8 @@ model TopicModule {
   order       Int
   title       String
   description String?
+  /// Минимальное время на теории: без теста открывает следующий модуль, с тестом — сам тест
+  requiredTheorySec Int @default(7200)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -108,7 +119,8 @@ model ModuleMaterial {
   id            String        @id @default(cuid())
   moduleId      String
   module        TopicModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  transportType TransportType @default(ROAD)
+  /// null — материал общий для всех видов транспорта (программы охранной деятельности)
+  transportType TransportType? @default(ROAD)
   title         String
   content       String        @db.Text
   order         Int           @default(0)
@@ -124,6 +136,8 @@ model ModuleTest {
   moduleId  String     @unique
   module    TopicModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   title     String
+  /// Проходной процент правильных ответов
+  passPct   Int        @default(90)
   createdAt DateTime   @default(now())
 
   questions ModuleTestQuestion[]
@@ -192,6 +206,8 @@ model ModuleSession {
   startedAt   DateTime      @default(now())
   endedAt     DateTime?
   durationSec Int?
+  /// Время последнего зачёта heartbeat: больше прошедшего с него времени не засчитывается
+  lastHeartbeatAt DateTime?
 
   @@index([clientId, moduleId])
   @@index([clientId, moduleId, endedAt])

@@ -4,8 +4,49 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { MODULE_THEORY_REQUIRED_SEC, HEARTBEAT_INTERVAL_SEC } from "@/lib/transport";
-import { sessionDurationSec, totalTopicTimeSec } from "@/lib/time-tracking";
+import { isModulePassed, isTransportProgram } from "@/lib/program";
+import { creditTheoryHeartbeat } from "@/lib/theory-heartbeat";
+import { formatDurationRu, sessionDurationSec, totalTopicTimeSec } from "@/lib/time-tracking";
+
+type ModuleForPassCheck = {
+  id: string;
+  requiredTheorySec: number;
+  test: { id: string } | null;
+};
+
+/** Для каждого модуля: пройден ли он клиентом (тест сдан или набрано время на теории). */
+async function getModulePassedMap(
+  clientId: string,
+  modules: ModuleForPassCheck[],
+): Promise<Map<string, boolean>> {
+  const moduleIds = modules.map((m) => m.id);
+  const [sessions, passedAttempts] = await Promise.all([
+    prisma.moduleSession.findMany({
+      where: { clientId, moduleId: { in: moduleIds } },
+    }),
+    prisma.moduleTestAttempt.findMany({
+      where: { clientId, passed: true, test: { moduleId: { in: moduleIds } } },
+      select: { test: { select: { moduleId: true } } },
+    }),
+  ]);
+
+  const testPassedModuleIds = new Set(passedAttempts.map((a) => a.test.moduleId));
+  const passed = new Map<string, boolean>();
+  for (const mod of modules) {
+    passed.set(
+      mod.id,
+      isModulePassed({
+        hasTest: Boolean(mod.test),
+        testPassed: testPassedModuleIds.has(mod.id),
+        theoryTimeSec: totalTopicTimeSec(sessions.filter((s) => s.moduleId === mod.id)),
+        requiredTheorySec: mod.requiredTheorySec,
+      }),
+    );
+  }
+  return passed;
+}
+
+const MODULE_PASS_CHECK_INCLUDE = { test: { select: { id: true } } } as const;
 
 export async function getClientLearningData() {
   const user = await requireClient();
@@ -20,7 +61,7 @@ export async function getClientLearningData() {
         include: {
           topic: {
             include: {
-              modules: { orderBy: { order: "asc" } },
+              modules: { orderBy: { order: "asc" }, include: MODULE_PASS_CHECK_INCLUDE },
               materials: { orderBy: { order: "asc" } },
               tests: true,
             },
@@ -38,33 +79,31 @@ export async function getClientLearningData() {
     throw new Error("Профиль клиента не найден");
   }
 
-  const topics = profile.topicAssignments
+  const sortedTopics = profile.topicAssignments
     .map((a) => a.topic)
-    .sort((a, b) => a.order - b.order)
-    .map((topic) => {
-      const modules = topic.modules ?? [];
-      const moduleCount = modules.length;
+    .sort((a, b) => a.order - b.order);
 
-      // Determine "opened" module = first locked/not-passed module (starting from 1).
-      const bestPassedByModuleId = new Map<string, boolean>();
-      for (const attempt of profile.moduleTestAttempts) {
-        if (attempt.passed !== true) continue;
-        bestPassedByModuleId.set(attempt.test.moduleId, true as boolean);
+  const passedByModuleId = await getModulePassedMap(
+    profile.id,
+    sortedTopics.flatMap((topic) => topic.modules),
+  );
+
+  const topics = sortedTopics.map((topic) => {
+    const modules = topic.modules ?? [];
+    const moduleCount = modules.length;
+
+    // Следующий модуль — первый непройденный.
+    let nextModuleOrder = modules.length ? modules[0]!.order : 1;
+    for (const mod of modules) {
+      if (!passedByModuleId.get(mod.id)) {
+        nextModuleOrder = mod.order;
+        break;
       }
+      nextModuleOrder = mod.order + 1;
+    }
 
-      let nextModuleOrder = modules.length ? modules[0]!.order : 1;
-      for (const mod of modules) {
-        if (mod.order === 1) continue; // module 1 has no test, always considered complete
-        const passed = bestPassedByModuleId.get(mod.id) ?? false;
-        if (!passed) {
-          nextModuleOrder = mod.order;
-          break;
-        }
-        nextModuleOrder = mod.order + 1;
-      }
-
-      return { ...topic, moduleCount, nextModuleOrder };
-    });
+    return { ...topic, moduleCount, nextModuleOrder };
+  });
 
   return { profile, topics };
 }
@@ -191,14 +230,8 @@ export async function getClassificationModules(topicId: string) {
     },
     include: {
       topic: {
-        include: { modules: { orderBy: { order: "asc" } } },
-      },
-      client: {
         include: {
-          moduleTestAttempts: {
-            include: { test: true },
-            orderBy: { completedAt: "desc" },
-          },
+          modules: { orderBy: { order: "asc" }, include: MODULE_PASS_CHECK_INCLUDE },
         },
       },
     },
@@ -206,30 +239,16 @@ export async function getClassificationModules(topicId: string) {
 
   if (!assignment) return null;
 
-  const attempts = assignment.client.moduleTestAttempts;
-  const testPassedByModuleId = new Set<string>();
-  for (const a of attempts) {
-    if (a.passed) testPassedByModuleId.add(a.test.moduleId);
-  }
+  const passedMap = await getModulePassedMap(
+    user.clientProfileId,
+    assignment.topic.modules,
+  );
 
-  // Module 1 has no test — "passed" means ≥ 2h of theory time spent
-  const module1 = assignment.topic.modules.find((m) => m.order === 1);
-  const module1Sessions = module1
-    ? await prisma.moduleSession.findMany({ where: { clientId: user.clientProfileId, moduleId: module1.id } })
-    : [];
-  const module1Passed = totalTopicTimeSec(module1Sessions) >= MODULE_THEORY_REQUIRED_SEC;
-
-  const passedMap = new Map<string, boolean>();
-  for (const m of assignment.topic.modules) {
-    passedMap.set(m.id, m.order === 1 ? module1Passed : testPassedByModuleId.has(m.id));
-  }
-
-  const modules = assignment.topic.modules.map((m) => {
-    if (m.order === 1) return { ...m, unlocked: true, passed: module1Passed };
-    const prevModule = assignment.topic.modules.find((x) => x.order === m.order - 1);
-    const prevPassed = prevModule ? passedMap.get(prevModule.id) ?? false : true;
-    const passed = testPassedByModuleId.has(m.id);
-    return { ...m, unlocked: prevPassed, passed };
+  // Первый модуль открыт всегда, каждый следующий — после прохождения предыдущего.
+  const modules = assignment.topic.modules.map((m, index) => {
+    const prevModule = index > 0 ? assignment.topic.modules[index - 1] : null;
+    const unlocked = prevModule ? (passedMap.get(prevModule.id) ?? false) : true;
+    return { ...m, unlocked, passed: passedMap.get(m.id) ?? false };
   });
 
   return { topic: assignment.topic, modules };
@@ -261,53 +280,39 @@ export async function getModuleData(moduleId: string) {
       clientId_topicId: { clientId: user.clientProfileId, topicId: topicModule.topicId },
     },
     include: {
-      client: {
-        select: {
-          transportType: true,
-          moduleTestAttempts: { include: { test: true } },
+      client: { select: { transportType: true } },
+      topic: {
+        include: {
+          modules: { orderBy: { order: "asc" }, include: MODULE_PASS_CHECK_INCLUDE },
         },
       },
-      topic: { include: { modules: { orderBy: { order: "asc" } } } },
     },
   });
 
   if (!assignment) return null;
 
-  const materials = await prisma.moduleMaterial.findMany({
-    where: {
-      moduleId,
-      transportType: assignment.client.transportType,
-    },
-    orderBy: { order: "asc" },
-  });
+  // В программах ТБ теория своя для каждого вида транспорта, в остальных — общая (null).
+  const materialTransportType = isTransportProgram(assignment.topic)
+    ? assignment.client.transportType
+    : null;
+  const materials =
+    isTransportProgram(assignment.topic) && materialTransportType == null
+      ? []
+      : await prisma.moduleMaterial.findMany({
+          where: { moduleId, transportType: materialTransportType },
+          orderBy: { order: "asc" },
+        });
 
   const moduleSessions = await prisma.moduleSession.findMany({
     where: { clientId: user.clientProfileId, moduleId },
   });
   const theoryTimeSec = totalTopicTimeSec(moduleSessions);
 
-  const passedByModuleId = new Set<string>();
-  for (const a of assignment.client.moduleTestAttempts) {
-    if (a.passed) passedByModuleId.add(a.test.moduleId);
-  }
-
-  let unlocked: boolean;
-  if (topicModule.order === 1) {
-    unlocked = true;
-  } else {
-    const prev = assignment.topic.modules.find((m) => m.order === topicModule.order - 1);
-    if (!prev) {
-      unlocked = true;
-    } else if (prev.order === 1) {
-      // Module 1 has no test — unlock next via time requirement
-      const prevSessions = await prisma.moduleSession.findMany({
-        where: { clientId: user.clientProfileId, moduleId: prev.id },
-      });
-      unlocked = totalTopicTimeSec(prevSessions) >= MODULE_THEORY_REQUIRED_SEC;
-    } else {
-      unlocked = passedByModuleId.has(prev.id);
-    }
-  }
+  const moduleIndex = assignment.topic.modules.findIndex((m) => m.id === moduleId);
+  const prev = moduleIndex > 0 ? assignment.topic.modules[moduleIndex - 1] : null;
+  const unlocked = prev
+    ? ((await getModulePassedMap(user.clientProfileId, [prev])).get(prev.id) ?? false)
+    : true;
 
   if (!unlocked) {
     return { locked: true as const, module: null };
@@ -373,6 +378,7 @@ export async function getModuleData(moduleId: string) {
   const safeTest = topicModule.test
     ? {
         ...topicModule.test,
+        passPct: topicModule.test.passPct,
         questions: topicModule.test.questions.map((question) => ({
           id: question.id,
           order: question.order,
@@ -415,18 +421,18 @@ export async function endModuleSessionAction(sessionId: string) {
   redirect("/learn");
 }
 
-export async function heartbeatModuleSessionAction(sessionId: string): Promise<void> {
+/** visibleSec — сколько секунд вкладка была видна с прошлого heartbeat (по данным клиента). */
+export async function heartbeatModuleSessionAction(
+  sessionId: string,
+  visibleSec: number,
+): Promise<void> {
   const user = await requireClient();
   if (!user.clientProfileId) throw new Error("Профиль клиента не найден");
 
-  const session = await prisma.moduleSession.findFirst({
-    where: { id: sessionId, clientId: user.clientProfileId, endedAt: null },
-  });
-  if (!session) return;
-
-  await prisma.moduleSession.update({
-    where: { id: session.id },
-    data: { durationSec: (session.durationSec ?? 0) + HEARTBEAT_INTERVAL_SEC },
+  await creditTheoryHeartbeat(prisma, {
+    clientId: user.clientProfileId,
+    sessionId,
+    visibleSec,
   });
 }
 
@@ -441,31 +447,38 @@ export async function submitModuleTestAction(
     where: { id: moduleId },
     include: {
       test: { include: { questions: { include: { options: true } } } },
-      topic: { include: { modules: { orderBy: { order: "asc" } } } },
+      topic: {
+        include: {
+          modules: { orderBy: { order: "asc" }, include: MODULE_PASS_CHECK_INCLUDE },
+        },
+      },
     },
   });
   if (!topicModule) return { error: "Модуль не найден" };
-  if (topicModule.order === 1) return { error: "У модуля 1 нет теста" };
   if (!topicModule.test) return { error: "Тест не найден" };
+
+  const assignment = await prisma.clientTopicAssignment.findUnique({
+    where: {
+      clientId_topicId: { clientId: user.clientProfileId, topicId: topicModule.topicId },
+    },
+  });
+  if (!assignment) return { error: "Программа не назначена" };
 
   const moduleSessions = await prisma.moduleSession.findMany({
     where: { clientId: user.clientProfileId, moduleId },
   });
-  if (totalTopicTimeSec(moduleSessions) < MODULE_THEORY_REQUIRED_SEC) {
-    return { error: "Для доступа к тесту необходимо изучить теорию не менее 2 часов" };
+  if (totalTopicTimeSec(moduleSessions) < topicModule.requiredTheorySec) {
+    return {
+      error: `Для доступа к тесту необходимо изучить теорию не менее ${formatDurationRu(topicModule.requiredTheorySec)}`,
+    };
   }
 
-  // gating: ensure unlocked
-  const prev = topicModule.topic.modules.find((m) => m.order === topicModule.order - 1);
-  if (prev && prev.order !== 1) {
-    const prevPassed = await prisma.moduleTestAttempt.findFirst({
-      where: {
-        clientId: user.clientProfileId,
-        test: { moduleId: prev.id },
-        passed: true,
-      },
-    });
-    if (!prevPassed) return { error: "Следующий модуль ещё закрыт" };
+  // Модуль должен быть открыт: предыдущий пройден.
+  const moduleIndex = topicModule.topic.modules.findIndex((m) => m.id === moduleId);
+  const prev = moduleIndex > 0 ? topicModule.topic.modules[moduleIndex - 1] : null;
+  if (prev) {
+    const prevPassed = (await getModulePassedMap(user.clientProfileId, [prev])).get(prev.id);
+    if (!prevPassed) return { error: "Этот модуль ещё закрыт" };
   }
 
   const questions = topicModule.test.questions;
@@ -484,7 +497,7 @@ export async function submitModuleTestAction(
   }
 
   const scorePct = Math.round((correct / questions.length) * 100);
-  const passed = scorePct >= 90;
+  const passed = scorePct >= topicModule.test.passPct;
 
   const attempt = await prisma.moduleTestAttempt.create({
     data: {

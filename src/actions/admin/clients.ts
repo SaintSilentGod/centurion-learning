@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/username";
 import { formatFioFromProfile } from "@/lib/format-name";
 import { prisma } from "@/lib/prisma";
+import { isModulePassed, isTransportProgram } from "@/lib/program";
 import { isTransportType } from "@/lib/transport";
 import { totalTopicTimeSec } from "@/lib/time-tracking";
 
@@ -82,17 +83,8 @@ export async function createClientAction(
     return { error: "Пароль должен быть не короче 8 символов" };
   }
 
-  if (!isTransportType(transportTypeRaw)) {
-    return { error: "Выберите вид транспорта" };
-  }
-
   if (topicIds.length === 0) {
-    return { error: "Выберите хотя бы одну классификацию" };
-  }
-
-  const existingUser = await prisma.user.findUnique({ where: { username } });
-  if (existingUser) {
-    return { error: "Такой логин уже занят" };
+    return { error: "Выберите хотя бы одну программу обучения" };
   }
 
   const topics = await prisma.topic.findMany({
@@ -100,6 +92,19 @@ export async function createClientAction(
   });
   if (topics.length !== topicIds.length) {
     return { error: "Выбраны несуществующие темы" };
+  }
+
+  // Вид транспорта нужен только программам транспортной безопасности.
+  const needsTransport = topics.some(isTransportProgram);
+  if (needsTransport && !isTransportType(transportTypeRaw)) {
+    return { error: "Выберите вид транспорта для категорий ТБ" };
+  }
+  const transportType =
+    needsTransport && isTransportType(transportTypeRaw) ? transportTypeRaw : null;
+
+  const existingUser = await prisma.user.findUnique({ where: { username } });
+  if (existingUser) {
+    return { error: "Такой логин уже занят" };
   }
 
   const passwordHash = await hashPassword(password);
@@ -117,7 +122,7 @@ export async function createClientAction(
           lastName,
           patronymic,
           dateOfBirth,
-          transportType: transportTypeRaw,
+          transportType,
           createdById: admin.id,
           topicAssignments: {
             create: topicIds.map((topicId) => ({ topicId })),
@@ -232,42 +237,65 @@ export async function getClientDetails(clientId: string) {
     include: {
       user: { select: { username: true, createdAt: true } },
       topicAssignments: {
-        include: { topic: { include: { tests: true } } },
+        include: {
+          topic: {
+            include: {
+              modules: {
+                orderBy: { order: "asc" },
+                include: { test: { select: { id: true } } },
+              },
+            },
+          },
+        },
       },
-      topicSessions: true,
-      testAttempts: true,
+      moduleSessions: true,
+      moduleTestAttempts: {
+        where: { completedAt: { not: null } },
+        select: { passed: true, scorePct: true, test: { select: { moduleId: true } } },
+      },
     },
   });
 
   if (!client) return null;
 
-  const assignedTopicIds = new Set(client.topicAssignments.map((a) => a.topicId));
-  const allTopics = await prisma.topic.findMany({
-    where: { id: { in: [...assignedTopicIds] } },
-    orderBy: { order: "asc" },
-  });
+  const testPassedModuleIds = new Set(
+    client.moduleTestAttempts.filter((a) => a.passed).map((a) => a.test.moduleId),
+  );
 
-  const topicProgress = allTopics.map((topic) => {
-    const assigned = true;
-    const sessions = client.topicSessions.filter((s) => s.topicId === topic.id);
-    const totalTimeSec = totalTopicTimeSec(sessions);
-    const hasOpenSession = sessions.some((s) => !s.endedAt);
-    const assignment = client.topicAssignments.find((a) => a.topicId === topic.id);
-    const testId = assignment?.topic.tests[0]?.id;
-    const testAttempt = testId
-      ? client.testAttempts.find((a) => a.testId === testId)
-      : undefined;
+  const topicProgress = client.topicAssignments
+    .map((assignment) => assignment.topic)
+    .sort((a, b) => a.order - b.order)
+    .map((topic) => {
+      const moduleIds = new Set(topic.modules.map((m) => m.id));
+      const sessions = client.moduleSessions.filter((s) => moduleIds.has(s.moduleId));
+      const passedModules = topic.modules.filter((m) =>
+        isModulePassed({
+          hasTest: Boolean(m.test),
+          testPassed: testPassedModuleIds.has(m.id),
+          theoryTimeSec: totalTopicTimeSec(sessions.filter((s) => s.moduleId === m.id)),
+          requiredTheorySec: m.requiredTheorySec,
+        }),
+      ).length;
+      const lastModule = topic.modules.at(-1);
+      const finalAttempts = lastModule?.test
+        ? client.moduleTestAttempts.filter((a) => a.test.moduleId === lastModule.id)
+        : [];
+      const bestFinalPct = finalAttempts.length
+        ? Math.max(...finalAttempts.map((a) => a.scorePct ?? 0))
+        : null;
 
-    return {
-      topicId: topic.id,
-      topicOrder: topic.order,
-      topicTitle: topic.title,
-      assigned,
-      totalTimeSec,
-      hasOpenSession,
-      testPassed: testAttempt?.passed ?? null,
-    };
-  });
+      return {
+        topicId: topic.id,
+        topicOrder: topic.order,
+        topicKind: topic.kind,
+        topicTitle: topic.title,
+        totalTimeSec: totalTopicTimeSec(sessions),
+        moduleCount: topic.modules.length,
+        passedModules,
+        finalTestPassed: lastModule ? testPassedModuleIds.has(lastModule.id) : false,
+        bestFinalPct,
+      };
+    });
 
   return { client, topicProgress };
 }

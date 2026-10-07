@@ -14,8 +14,33 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import type { TransportTypeValue } from "@/lib/transport";
 import { formatCategoryAssignmentLabel } from "@/lib/format-category";
+import { isTransportProgram } from "@/lib/program";
+import type { ProgramKind } from "@/generated/prisma/client";
 
-type Topic = { id: string; order: number; title: string };
+type Topic = { id: string; order: number; title: string; kind: ProgramKind };
+
+function TopicCheckbox({
+  topic,
+  label,
+  checked,
+}: {
+  topic: Topic;
+  label: string;
+  checked?: boolean;
+}) {
+  return (
+    <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-4">
+      <input
+        type="checkbox"
+        name="topicIds"
+        value={topic.id}
+        defaultChecked={checked}
+        className="h-5 w-5"
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
 
 const initialState: CreateClientState = {};
 
@@ -31,6 +56,8 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
   const [loginTouched, setLoginTouched] = useState(false);
   const [allSelected, setAllSelected] = useState(false);
   const [transportType, setTransportType] = useState<TransportTypeValue | "">("");
+  const transportTopics = topics.filter(isTransportProgram);
+  const securityTopics = topics.filter((topic) => !isTransportProgram(topic));
 
   useEffect(() => {
     if (loginTouched || !firstName.trim() || !lastName.trim()) return;
@@ -132,40 +159,48 @@ export function CreateClientForm({ topics }: { topics: Topic[] }) {
           </div>
         </div>
 
-        <TransportTypeSelector value={transportType} onChange={setTransportType} />
+        <section className="flex flex-col gap-5 rounded-xl border border-slate-200 p-4 md:p-5">
+          <h3 className="text-lg font-semibold text-slate-900">
+            Транспортная безопасность
+          </h3>
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="mb-1 text-base font-medium text-slate-800">
-            Назначить классификации
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setAllSelected((v) => !v)}
-            >
-              {allSelected ? "Снять все" : "Отметить все"}
-            </Button>
-          </div>
-          {topics.map((topic) => (
-            <label
-              key={topic.id}
-              className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-4"
-            >
-              <input
-                type="checkbox"
-                name="topicIds"
-                value={topic.id}
-                defaultChecked={allSelected}
+          <TransportTypeSelector value={transportType} onChange={setTransportType} />
+
+          <fieldset className="flex flex-col gap-3">
+            <legend className="mb-1 text-base font-medium text-slate-800">
+              Назначить классификации
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setAllSelected((v) => !v)}
+              >
+                {allSelected ? "Снять все" : "Отметить все"}
+              </Button>
+            </div>
+            {transportTopics.map((topic) => (
+              <TopicCheckbox
                 key={`${allSelected}-${topic.id}`}
-                className="h-5 w-5"
+                topic={topic}
+                label={formatCategoryAssignmentLabel(topic.order, topic.title)}
+                checked={allSelected}
               />
-              <span>
-                {formatCategoryAssignmentLabel(topic.order, topic.title)}
-              </span>
-            </label>
-          ))}
-        </fieldset>
+            ))}
+          </fieldset>
+        </section>
+
+        {securityTopics.length > 0 ? (
+          <section className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 md:p-5">
+            <h3 className="text-lg font-semibold text-slate-900">Охранная деятельность</h3>
+            <p className="text-sm text-slate-600">
+              Вид транспорта для этих программ не нужен.
+            </p>
+            {securityTopics.map((topic) => (
+              <TopicCheckbox key={topic.id} topic={topic} label={topic.title} />
+            ))}
+          </section>
+        ) : null}
 
         {state.error ? (
           <p className="rounded-lg bg-red-50 px-4 py-3 text-base text-red-800">

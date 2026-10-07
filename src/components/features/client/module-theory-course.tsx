@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { heartbeatModuleSessionAction } from "@/actions/client/learning";
 import { useLiveTheoryTime } from "@/hooks/use-live-theory-time";
 import { TheoryContent } from "@/lib/theory-content";
-import { MODULE_THEORY_REQUIRED_SEC, HEARTBEAT_INTERVAL_SEC } from "@/lib/transport";
+import { moduleUnitLabel, programBadge, type ProgramLike } from "@/lib/program";
+import { HEARTBEAT_INTERVAL_SEC } from "@/lib/transport";
 import { formatDurationLiveRu, formatDurationRu } from "@/lib/time-tracking";
 import "./module-theory-course.css";
 
@@ -34,16 +35,18 @@ function saveVisited(moduleId: string, ids: Set<string>) {
 export function ModuleTheoryCourse({
   moduleId,
   sessionId,
-  categoryOrder,
+  program,
   moduleOrder,
+  requiredTheorySec,
   moduleTitle,
   materials,
   completedTheoryTimeSec,
 }: {
   moduleId: string;
   sessionId: string;
-  categoryOrder: number;
+  program: ProgramLike;
   moduleOrder: number;
+  requiredTheorySec: number;
   moduleTitle: string;
   materials: Material[];
   completedTheoryTimeSec: number;
@@ -60,16 +63,37 @@ export function ModuleTheoryCourse({
 
   const liveTheoryTimeSec = useLiveTheoryTime(completedTheoryTimeSec);
 
-  // Heartbeat: каждые 30с пока вкладка видима — пишем время в БД и обновляем страницу
+  // Heartbeat: каждые 30с отправляем, сколько секунд вкладка была видна с прошлого раза.
+  // Сервер засчитывает не больше реально прошедшего времени.
   useEffect(() => {
+    let visibleMs = 0;
+    let visibleSince = document.visibilityState === "visible" ? Date.now() : null;
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        if (visibleSince !== null) visibleMs += Date.now() - visibleSince;
+        visibleSince = null;
+      } else if (visibleSince === null) {
+        visibleSince = Date.now();
+      }
+    };
+
     const id = window.setInterval(async () => {
-      if (document.visibilityState !== "visible") return;
-      await heartbeatModuleSessionAction(sessionId);
-      router.refresh();
+      const now = Date.now();
+      const visibleSec = Math.round((visibleMs + (visibleSince !== null ? now - visibleSince : 0)) / 1000);
+      visibleMs = 0;
+      if (visibleSince !== null) visibleSince = now;
+      await heartbeatModuleSessionAction(sessionId, visibleSec);
+      if (document.visibilityState === "visible") router.refresh();
     }, HEARTBEAT_INTERVAL_SEC * 1000);
-    return () => window.clearInterval(id);
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [sessionId, router]);
-  const theoryReady = liveTheoryTimeSec >= MODULE_THEORY_REQUIRED_SEC;
+  const theoryReady = liveTheoryTimeSec >= requiredTheorySec;
   const activeMaterial = sortedMaterials[activeIndex] ?? null;
   const progressPct =
     sortedMaterials.length > 0
@@ -117,7 +141,7 @@ export function ModuleTheoryCourse({
       <div className="theory-course-top">
         <div className="theory-course-top-meta">
           <div className="theory-course-module-label">
-            Категория {categoryOrder} · Модуль {moduleOrder}
+            {programBadge(program)} · {moduleUnitLabel(program, moduleOrder)}
           </div>
           <div className="theory-course-module-title">{moduleTitle}</div>
         </div>
@@ -126,9 +150,9 @@ export function ModuleTheoryCourse({
           <div
             className={`theory-course-timer-value${theoryReady ? " is-ready" : ""}`}
           >
-            {formatDurationLiveRu(liveTheoryTimeSec)} /{" "}
-            {formatDurationRu(MODULE_THEORY_REQUIRED_SEC)}
-            {theoryReady ? " ✓" : ""}
+            {formatDurationLiveRu(liveTheoryTimeSec)}
+            {requiredTheorySec > 0 ? ` / ${formatDurationRu(requiredTheorySec)}` : ""}
+            {requiredTheorySec > 0 && theoryReady ? " ✓" : ""}
           </div>
         </div>
       </div>

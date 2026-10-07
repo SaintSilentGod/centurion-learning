@@ -1,7 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { submitApplicationAction } from "@/actions/marketing/applications";
+import {
+  APPLICATION_COMMENT_MAX,
+  APPLICATION_NAME_MAX,
+} from "@/lib/application-limits";
 
 type ApplicationFormProps = {
   variant?: "compact" | "full";
@@ -15,6 +19,11 @@ export function ApplicationForm({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const startedAtRef = useRef(0);
+
+  useEffect(() => {
+    startedAtRef.current = Date.now();
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,6 +32,7 @@ export function ApplicationForm({
 
     const formData = new FormData(event.currentTarget);
     formData.set("source", variant === "full" ? "contacts" : "home");
+    formData.set("startedAt", String(startedAtRef.current));
 
     const result = await submitApplicationAction(formData);
 
@@ -62,6 +72,16 @@ export function ApplicationForm({
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-900">{error}</p>
       ) : null}
 
+      {/* Ловушка для ботов: человек это поле не видит и не заполняет. */}
+      <input
+        type="text"
+        name="website"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        style={{ position: "absolute", left: "-10000px", width: 1, height: 1, opacity: 0 }}
+      />
+
       {variant === "full" ? (
         <>
           <label className="mkt-label">
@@ -69,6 +89,7 @@ export function ApplicationForm({
             <input
               className="mkt-input"
               name="name"
+              maxLength={APPLICATION_NAME_MAX}
               placeholder="Иван Иванов"
               required
               disabled={submitting}
@@ -97,6 +118,7 @@ export function ApplicationForm({
             <textarea
               className="mkt-textarea"
               name="comment"
+              maxLength={APPLICATION_COMMENT_MAX}
               placeholder="Расскажите, что вас интересует"
               rows={3}
               disabled={submitting}
@@ -119,6 +141,7 @@ export function ApplicationForm({
           <input
             className="mkt-input"
             name="name"
+            maxLength={APPLICATION_NAME_MAX}
             placeholder="Ваше имя"
             required
             disabled={submitting}

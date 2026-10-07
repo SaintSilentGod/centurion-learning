@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClassificationModules } from "@/actions/client/learning";
 import { Card } from "@/components/ui/card";
+import { moduleListTitle, programListTitle } from "@/lib/program";
 
 export default async function ClassificationPage({
   params,
@@ -17,10 +18,10 @@ export default async function ClassificationPage({
   return (
     <div className="flex flex-col gap-6">
       <Link href="/learn" className="text-blue-700 hover:underline">
-        ← К списку классификаций
+        ← К списку программ
       </Link>
 
-      <Card title={`${topic.order}. ${topic.title}`}>
+      <Card title={programListTitle(topic)}>
         {modules.length === 0 ? (
           <p className="text-slate-600">Модули пока не добавлены.</p>
         ) : (
@@ -29,7 +30,7 @@ export default async function ClassificationPage({
               <li key={m.id} className="flex items-center justify-between gap-4 py-4">
                 <div>
                   <p className="text-lg font-medium">
-                    {m.order}. {m.title}
+                    {moduleListTitle(m)}
                   </p>
                   <p className="text-slate-600">
                     {m.passed ? "Пройден" : m.unlocked ? "Доступен" : "Закрыт"}

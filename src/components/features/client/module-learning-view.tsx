@@ -8,14 +8,18 @@ import { ModuleTheoryCourse } from "@/components/features/client/module-theory-c
 import { useLiveTheoryTime } from "@/hooks/use-live-theory-time";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MODULE_THEORY_REQUIRED_SEC } from "@/lib/transport";
+import {
+  moduleInProgramGenitive,
+  moduleUnitLabel,
+  type ProgramLike,
+} from "@/lib/program";
 import { formatDurationRu } from "@/lib/time-tracking";
 import "./module-learning-view.css";
 
 type Material = { id: string; title: string; content: string; order: number };
 type Option = { id: string; text: string };
 type Question = { id: string; text: string; options: Option[] };
-type Test = { questions: Question[] } | null;
+type Test = { questions: Question[]; passPct: number } | null;
 type BestAttempt = {
   scorePct: number | null;
   passed: boolean | null;
@@ -46,12 +50,14 @@ function TestReview({
   latestAttempt,
   scorePct,
   passed,
+  passPct,
   onRetake,
 }: {
   questions: Question[];
   latestAttempt: NonNullable<LatestAttempt>;
   scorePct: number;
   passed: boolean;
+  passPct: number;
   onRetake: () => void;
 }) {
   const answerByQuestionId = new Map(
@@ -68,7 +74,7 @@ function TestReview({
         Результат: {scorePct}%{" "}
         {passed
           ? "— тест пройден"
-          : "— недостаточно для прохождения (нужно 90%)"}
+          : `— недостаточно для прохождения (нужно ${passPct}%)`}
       </p>
 
       <div className="flex flex-col gap-4">
@@ -137,16 +143,21 @@ function TestReview({
 
 function BlockIntroModal({
   kind,
-  categoryOrder,
+  program,
   moduleOrder,
+  requiredTheorySec,
+  passPct,
   onConfirm,
 }: {
   kind: BlockKind;
-  categoryOrder: number;
+  program: ProgramLike;
   moduleOrder: number;
+  requiredTheorySec: number;
+  passPct: number;
   onConfirm: () => void;
 }) {
   const isTheory = kind === "theory";
+  const where = moduleInProgramGenitive(program, moduleOrder);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -156,17 +167,19 @@ function BlockIntroModal({
         </h2>
         <p className="text-base leading-relaxed text-slate-700">
           {isTheory ? (
-            <>
-              Сейчас вы будете просматривать теоретический блок модуля {moduleOrder}{" "}
-              категории {categoryOrder}. Необходимое затрачивание времени для
-              теоретического блока — 2 часа. Это нужно, чтобы перейти к тестовой
-              части этого модуля.
-            </>
+            requiredTheorySec > 0 ? (
+              <>
+                Сейчас вы будете просматривать теоретическую часть {where}. Минимальное
+                время прохождения теории составляет {formatDurationRu(requiredTheorySec)}.
+                По истечении этого времени вы сможете перейти дальше.
+              </>
+            ) : (
+              <>Сейчас вы будете просматривать теоретическую часть {where}.</>
+            )
           ) : (
             <>
-              Сейчас вы приступите к тестовой части модуля {moduleOrder} категории{" "}
-              {categoryOrder}. Для успешного прохождения необходимо набрать не менее
-              90% правильных ответов.
+              Сейчас вы приступите к тестовой части {where}. Для успешного прохождения
+              необходимо набрать не менее {passPct}% правильных ответов.
             </>
           )}
         </p>
@@ -181,8 +194,9 @@ function BlockIntroModal({
 export function ModuleLearningView({
   moduleId,
   sessionId,
-  categoryOrder,
+  program,
   moduleOrder,
+  requiredTheorySec,
   moduleTitle,
   topicId,
   materials,
@@ -196,8 +210,9 @@ export function ModuleLearningView({
 }: {
   moduleId: string;
   sessionId: string;
-  categoryOrder: number;
+  program: ProgramLike;
   moduleOrder: number;
+  requiredTheorySec: number;
   moduleTitle: string;
   topicId: string;
   materials: Material[];
@@ -209,9 +224,11 @@ export function ModuleLearningView({
   passed?: string;
   showReview?: boolean;
 }) {
-  const hasTest = moduleOrder > 1 && Boolean(test);
+  const hasTest = Boolean(test);
+  const passPct = test?.passPct ?? 0;
   const liveTheoryTimeSec = useLiveTheoryTime(theoryTimeSec);
-  const theoryReady = liveTheoryTimeSec >= MODULE_THEORY_REQUIRED_SEC;
+  const theoryReady = liveTheoryTimeSec >= requiredTheorySec;
+  const unit = moduleUnitLabel(program, moduleOrder);
 
   const [activeTab, setActiveTab] = useState<ViewTab>(
     showReview ? "test" : "theory",
@@ -293,16 +310,20 @@ export function ModuleLearningView({
       {theoryIntroOpen ? (
         <BlockIntroModal
           kind="theory"
-          categoryOrder={categoryOrder}
+          program={program}
           moduleOrder={moduleOrder}
+          requiredTheorySec={requiredTheorySec}
+          passPct={passPct}
           onConfirm={confirmTheoryIntro}
         />
       ) : null}
       {testIntroOpen ? (
         <BlockIntroModal
           kind="test"
-          categoryOrder={categoryOrder}
+          program={program}
           moduleOrder={moduleOrder}
+          requiredTheorySec={requiredTheorySec}
+          passPct={passPct}
           onConfirm={confirmTestIntro}
         />
       ) : null}
@@ -312,7 +333,7 @@ export function ModuleLearningView({
           href={`/learn/classification/${topicId}`}
           className="module-learning-back"
         >
-          ← К модулям классификации
+          ← К списку модулей
         </Link>
 
         {hasTest ? (
@@ -335,7 +356,7 @@ export function ModuleLearningView({
               disabled={!theoryReady}
               title={
                 !theoryReady
-                  ? `Нужно не менее ${formatDurationRu(MODULE_THEORY_REQUIRED_SEC)} на теории`
+                  ? `Нужно не менее ${formatDurationRu(requiredTheorySec)} на теории`
                   : undefined
               }
             >
@@ -354,8 +375,9 @@ export function ModuleLearningView({
         <ModuleTheoryCourse
           moduleId={moduleId}
           sessionId={sessionId}
-          categoryOrder={categoryOrder}
+          program={program}
           moduleOrder={moduleOrder}
+          requiredTheorySec={requiredTheorySec}
           moduleTitle={moduleTitle}
           materials={materials}
           completedTheoryTimeSec={theoryTimeSec}
@@ -364,7 +386,7 @@ export function ModuleLearningView({
 
       {theoryUnlocked && hasTest && theoryReady && activeTab === "test" ? (
         <Card
-          title={`Тест · модуль ${moduleOrder}`}
+          title={`Тест · ${unit.toLowerCase()}`}
           actions={
             bestAttempt?.completedAt ? (
               <span className="text-sm text-slate-600">
@@ -389,6 +411,7 @@ export function ModuleLearningView({
               latestAttempt={latestAttempt}
               scorePct={reviewScorePct}
               passed={reviewPassed}
+              passPct={passPct}
               onRetake={startRetake}
             />
           ) : (
@@ -440,7 +463,7 @@ export function ModuleLearningView({
                 ))}
                 <Button type="submit">Отправить тест</Button>
                 <p className="text-sm text-slate-600">
-                  Для открытия следующего модуля нужно набрать минимум 90%.
+                  Для прохождения нужно набрать минимум {passPct}%.
                 </p>
               </div>
             </form>
@@ -448,17 +471,13 @@ export function ModuleLearningView({
         </Card>
       ) : null}
 
-      {moduleOrder === 1 && theoryUnlocked ? (
+      {!hasTest && theoryUnlocked ? (
         <Card title="Тест">
           <p className="text-slate-600">
-            В модуле 1 теста нет. Изучите теорию и открывайте следующий модуль.
+            {requiredTheorySec > 0
+              ? `Здесь нет теста. Изучите теорию не менее ${formatDurationRu(requiredTheorySec)}, и откроется следующий раздел.`
+              : "Здесь нет теста. Изучите теорию и переходите к следующему разделу."}
           </p>
-        </Card>
-      ) : null}
-
-      {!hasTest && moduleOrder > 1 && theoryUnlocked ? (
-        <Card title="Тест">
-          <p className="text-slate-600">Тест для этого модуля пока не добавлен.</p>
         </Card>
       ) : null}
 

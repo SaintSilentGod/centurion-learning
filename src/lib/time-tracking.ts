@@ -62,3 +62,22 @@ export function formatDurationLiveRu(totalSec: number): string {
   }
   return `${seconds} сек`;
 }
+
+/**
+ * Сколько секунд засчитать за один heartbeat теории.
+ * Не больше, чем вкладка была видна по словам клиента, не больше реально прошедшего
+ * с прошлого зачёта (две вкладки и повторные запросы не ускоряют таймер)
+ * и не больше двух интервалов heartbeat (после сна компьютера не начисляется простой).
+ */
+export function heartbeatCreditSec(params: {
+  visibleSec: number;
+  lastCreditAt: Date;
+  now: Date;
+  intervalSec: number;
+}): number {
+  const visible = Number.isFinite(params.visibleSec)
+    ? Math.max(0, Math.floor(params.visibleSec))
+    : 0;
+  const wall = sessionDurationSec(params.lastCreditAt, params.now);
+  return Math.min(visible, wall, params.intervalSec * 2);
+}

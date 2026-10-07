@@ -2,7 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { SECURITY_PROGRAMS, TB_PROGRAMS } from "@/lib/marketing/data";
+import { formatProgramPrice, SECURITY_PROGRAMS, TB_PROGRAMS } from "@/lib/marketing/data";
+
+const PROGRAM_COUNT = TB_PROGRAMS.length + SECURITY_PROGRAMS.length;
 
 export default function ProgramsPage() {
   return (
@@ -11,7 +13,7 @@ export default function ProgramsPage() {
 
       <section className="mkt-container mkt-page-hero">
         <div className="mkt-kicker">Программы обучения</div>
-        <h1>13 программ по двум направлениям</h1>
+        <h1>{PROGRAM_COUNT} программ по двум направлениям</h1>
         <p>
           Все программы реализуются очно в Кургане или дистанционно. Нажмите на
           карточку программы, чтобы увидеть часы, стоимость и краткое описание.
@@ -76,10 +78,15 @@ export default function ProgramsPage() {
               <summary>
                 <div className="mkt-program-title">{program.title}</div>
                 <div className="mkt-program-hours">{program.hours} ак. часов</div>
-                <div className="mkt-program-price">{program.price} ₽</div>
+                <div className="mkt-program-price">{formatProgramPrice(program.price)}</div>
               </summary>
               <div className="mkt-program-body">
                 <p>{program.desc}</p>
+                {program.href ? (
+                  <Link href={program.href} className="mkt-btn-outline">
+                    Подробнее о программе →
+                  </Link>
+                ) : null}
               </div>
             </details>
           ))}

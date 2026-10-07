@@ -34,7 +34,7 @@ export default async function LearnLayout({
               href="/learn"
               className="text-base text-blue-700 hover:underline"
             >
-              Классификации
+              Программы
             </Link>
             <LogoutButton />
           </div>

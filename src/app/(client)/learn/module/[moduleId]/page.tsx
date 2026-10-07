@@ -22,8 +22,9 @@ export default async function ModulePage({
     <ModuleLearningView
       moduleId={module.id}
       sessionId={sessionId}
-      categoryOrder={module.topic.order}
+      program={module.topic}
       moduleOrder={module.order}
+      requiredTheorySec={module.requiredTheorySec}
       moduleTitle={module.title}
       topicId={module.topicId}
       materials={module.materials}
